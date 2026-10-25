@@ -22,7 +22,7 @@ canvas{width:100%;height:160px;border:1px solid var(--bd);border-radius:8px;back
 <div id="loading" class="ok"><p>…</p></div>
 <div id="info" class="ok" hidden><h1 id="info_h"></h1><p id="info_p"></p></div>
 <div id="app" hidden>
-<div class="card"><h2 id="h_stay"></h2><div><b id="s_prop"></b><br><span id="s_dates"></span></div><p class="m" style="margin-top:8px" id="s_hint"></p></div>
+<div class="card"><h2 id="h_stay"></h2><div><b id="s_prop"></b><br><span id="s_addr" style="color:var(--m)"></span><br><span id="s_dates"></span></div><p class="m" style="margin-top:8px" id="s_hint"></p></div>
 <form id="f" novalidate>
 <div id="guests"></div>
 <button type="button" class="link" id="add"></button>
@@ -93,7 +93,7 @@ else nat.addEventListener('change',e=>{if(!(e.detail&&e.detail.auto))delete nat.
 nat.addEventListener('change',()=>{if(doc)doc.hidden=!nat.value||nat.value==='AT';const co=el.querySelector('[name=country]');if(co&&!co.value)co.value=nat.value;});
 const rm=el.querySelector('.rm');if(rm)rm.onclick=()=>el.remove();}
 function render(){const G=$('guests');G.innerHTML='';n=0;
-$('h_stay').textContent=T.stay;$('s_prop').textContent=D.property;$('s_dates').textContent=fmtDate(D.arrival)+' → '+fmtDate(D.departure);$('s_hint').textContent=T.guests_hint.replace('{n}',D.guestsTotal);
+$('h_stay').textContent=T.stay;$('s_prop').textContent=D.property;$('s_addr').textContent=D.address||'';$('s_dates').textContent=fmtDate(D.arrival)+' → '+fmtDate(D.departure);$('s_hint').textContent=T.guests_hint.replace('{n}',D.guestsTotal);
 $('add').textContent=T.add;$('t_privacy').textContent=T.consent_privacy;$('t_card').textContent=T.consent_card;$('row_card').hidden=!D.saalfelden;$('t_sign').textContent=T.sign;$('clr').textContent=T.clear;$('go').textContent=T.submit;
 for(let i=1;i<=Math.max(1,D.guestsTotal);i++)G.insertAdjacentHTML('beforeend',card(i));G.querySelectorAll('.g').forEach(wire);
 const cc0=guessCountry(D.location);if(cc0){const m=G.querySelector('.g[data-i="1"]');['nationality','country'].forEach(k=>{const el=m.querySelector('[name='+k+']');if(el&&!el.value)el.value=cc0;});m.querySelector('[name=nationality]').dispatchEvent(new Event('change'));}
