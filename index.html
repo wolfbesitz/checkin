@@ -89,7 +89,7 @@ function mainNat(){const m=document.querySelector('.g[data-i="1"] [name=national
 function wire(el){const nat=el.querySelector('[name=nationality]'),doc=el.querySelector('.doc');
 if(el.dataset.i!=='1'&&!nat.value&&mainNat()){nat.value=mainNat();nat.dataset.auto='1'}
 if(el.dataset.i==='1')nat.addEventListener('change',()=>{document.querySelectorAll('.g:not([data-i="1"]) [name=nationality]').forEach(o=>{if(!o.value||o.dataset.auto){o.value=nat.value;o.dataset.auto='1';o.dispatchEvent(new Event('change'))}})});
-else nat.addEventListener('change',()=>{delete nat.dataset.auto});
+else nat.addEventListener('change',e=>{if(e.isTrusted)delete nat.dataset.auto});
 nat.addEventListener('change',()=>{if(doc)doc.hidden=!nat.value||nat.value==='AT';const co=el.querySelector('[name=country]');if(co&&!co.value)co.value=nat.value;});
 const rm=el.querySelector('.rm');if(rm)rm.onclick=()=>el.remove();}
 function render(){const G=$('guests');G.innerHTML='';n=0;
