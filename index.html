@@ -47,7 +47,7 @@ g_m:{de:"männlich",en:"male"},g_f:{de:"weiblich",en:"female"},g_d:{de:"divers",
 nat:{de:"Staatsangehörigkeit",en:"Nationality"},choose:{de:"bitte wählen",en:"please select"},addr:{de:"Adresse (Hauptwohnsitz)",en:"Home address"},
 street:{de:"Straße, Hausnummer",en:"Street, number"},zip:{de:"PLZ",en:"Postcode"},city:{de:"Ort",en:"City"},country:{de:"Land",en:"Country"},
 email:{de:"E-Mail",en:"E-mail"},email_card:{de:"E-Mail (für die Saalfelden Leogang Card)",en:"E-mail (for the Saalfelden Leogang Card)"},
-doc:{de:"Reisedokument (nur für Gäste ohne österreichische Staatsbürgerschaft)",en:"Travel document (only for non-Austrian citizens)"},
+doc:{de:"Reisedokument des Hauptgasts",en:"Travel document of the main guest"},doc_why:{de:"Gesetzlich nötig, wenn du keine österreichische Staatsbürgerschaft hast (§ 5 Meldegesetz). Kein Upload, nur abtippen.",en:"Required by Austrian law for non-Austrian citizens (§ 5 Meldegesetz). No upload, just type it in."},doc_auth_ph:{de:"z. B. Stadt Berlin",en:"e.g. HM Passport Office"},
 doc_type:{de:"Art",en:"Type"},passport:{de:"Reisepass",en:"Passport"},id_card:{de:"Personalausweis",en:"ID card"},doc_no:{de:"Nummer",en:"Number"},doc_issued:{de:"Ausstellungsdatum",en:"Date of issue"},
 doc_auth:{de:"Ausstellende Behörde",en:"Issuing authority"},doc_country:{de:"Ausstellender Staat",en:"Issuing country"},doc_opt:{de:"Für Familienangehörige des Hauptgastes freiwillig.",en:"Optional for family members of the main guest."},
 add:{de:"+ Weitere Person",en:"+ Add person"},remove:{de:"Entfernen",en:"Remove"},
@@ -79,18 +79,18 @@ function fmtDate(s){try{return new Date(s+'T00:00:00').toLocaleDateString(L==='d
 function card(i){const main=i===1;n=Math.max(n,i);const SAAL=D.saalfelden;
 return '<div class="card g" data-i="'+i+'">'+(main?'':'<button type="button" class="link rm">'+T.remove+'</button>')+'<h2>'+(main?T.main:T.companion+' '+(i-1))+'</h2>'
 +'<div class="row"><div><label>'+T.last+'</label><input name="last_name" required value="'+(main?esc(D.lastName):'')+'"></div><div><label>'+T.first+'</label><input name="first_name" required value="'+(main?esc(D.firstName):'')+'"></div></div>'
-+'<div class="row"><div><label>'+T.birth+'</label><input name="birth_date" type="date" required max="'+new Date().toISOString().slice(0,10)+'"></div><div><label>'+T.gender+'</label><select name="gender"><option value="">'+T.choose+'</option><option value="m">'+T.g_m+'</option><option value="f">'+T.g_f+'</option><option value="d">'+T.g_d+'</option><option value="x">'+T.g_x+'</option></select></div></div>'
++'<div class="row"><div><label>'+T.birth+'</label><input name="birth_date" type="date" required max="'+new Date().toISOString().slice(0,10)+'"></div>'+(main?'<div><label>'+T.gender+'</label><select name="gender"><option value="">'+T.choose+'</option><option value="m">'+T.g_m+'</option><option value="f">'+T.g_f+'</option><option value="d">'+T.g_d+'</option><option value="x">'+T.g_x+'</option></select></div>':'')+'</div>'
 +'<label>'+T.nat+'</label><select name="nationality" required><option value="">'+T.choose+'</option>'+copts+'</select>'
 +(main?'<div style="margin-top:8px"><b style="font-size:13px;color:var(--m)">'+T.addr+'</b><label>'+T.street+'</label><input name="street" required><div class="row"><div><label>'+T.zip+'</label><input name="zip" required></div><div><label>'+T.city+'</label><input name="city" required></div></div><label>'+T.country+'</label><select name="country" required><option value="">'+T.choose+'</option>'+copts+'</select></div>':'')
 +((main||SAAL)?'<label>'+(SAAL?T.email_card:T.email)+'</label><input name="email" type="email" '+(main?'required':'')+' value="'+(main?esc(D.email):'')+'">':'')
-+'<div class="doc" hidden><label style="margin-top:4px"><b>'+T.doc+'</b></label>'+(main?'':'<small>'+T.doc_opt+'</small>')+'<div class="row"><div><label>'+T.doc_type+'</label><select name="doc_type"><option value="passport">'+T.passport+'</option><option value="id_card">'+T.id_card+'</option></select></div><div><label>'+T.doc_no+'</label><input name="doc_number" '+(main?'data-req="1"':'')+'></div></div><div class="row"><div><label>'+T.doc_issued+'</label><input name="doc_issued" type="date"></div><div><label>'+T.doc_auth+'</label><input name="doc_authority"></div></div><label>'+T.doc_country+'</label><select name="doc_country"><option value="">'+T.choose+'</option>'+copts+'</select></div>'
++(main?'<div class="doc" hidden><label style="margin-top:4px"><b>'+T.doc+'</b></label><small>'+T.doc_why+'</small><div class="row"><div><label>'+T.doc_type+'</label><select name="doc_type"><option value="passport">'+T.passport+'</option><option value="id_card">'+T.id_card+'</option></select></div><div><label>'+T.doc_no+'</label><input name="doc_number" data-req="1"></div></div><div class="row"><div><label>'+T.doc_issued+'</label><input name="doc_issued" type="date" data-req="1"></div><div><label>'+T.doc_auth+'</label><input name="doc_authority" data-req="1" placeholder="'+T.doc_auth_ph+'"></div></div></div>':'')'
 +'</div>';}
 function mainNat(){const m=document.querySelector('.g[data-i="1"] [name=nationality]');return m?m.value:''}
 function wire(el){const nat=el.querySelector('[name=nationality]'),doc=el.querySelector('.doc');
-if(el.dataset.i!=='1'&&!nat.value&&mainNat()){nat.value=mainNat();doc.hidden=nat.value==='AT'}
+if(el.dataset.i!=='1'&&!nat.value&&mainNat()){nat.value=mainNat();nat.dataset.auto='1'}
 if(el.dataset.i==='1')nat.addEventListener('change',()=>{document.querySelectorAll('.g:not([data-i="1"]) [name=nationality]').forEach(o=>{if(!o.value||o.dataset.auto){o.value=nat.value;o.dataset.auto='1';o.dispatchEvent(new Event('change'))}})});
 else nat.addEventListener('change',()=>{delete nat.dataset.auto});
-nat.addEventListener('change',()=>{doc.hidden=!nat.value||nat.value==='AT';const co=el.querySelector('[name=country]');if(co&&!co.value)co.value=nat.value;const dc=el.querySelector('[name=doc_country]');if(dc&&!dc.value)dc.value=nat.value;});
+nat.addEventListener('change',()=>{if(doc)doc.hidden=!nat.value||nat.value==='AT';const co=el.querySelector('[name=country]');if(co&&!co.value)co.value=nat.value;});
 const rm=el.querySelector('.rm');if(rm)rm.onclick=()=>el.remove();}
 function render(){const G=$('guests');G.innerHTML='';n=0;
 $('h_stay').textContent=T.stay;$('s_prop').textContent=D.property;$('s_dates').textContent=fmtDate(D.arrival)+' → '+fmtDate(D.departure);$('s_hint').textContent=T.guests_hint.replace('{n}',D.guestsTotal);
@@ -112,9 +112,9 @@ $('clr').onclick=()=>{cx.clearRect(0,0,cv.width,cv.height);has=false};
 // Absenden
 $('f').onsubmit=async e=>{e.preventDefault();const err=$('err');err.hidden=true;let bad=false;document.querySelectorAll('.bad').forEach(x=>x.classList.remove('bad'));
 const guests=[...document.querySelectorAll('.g')].map((el,idx)=>{const o={position:idx+1};el.querySelectorAll('input,select').forEach(i=>{o[i.name]=i.value.trim()});
-const dv=!el.querySelector('.doc').hidden;el.querySelectorAll('[required]').forEach(i=>{if(!i.value.trim()){i.classList.add('bad');bad=true}});
+const dEl=el.querySelector('.doc');const dv=!!dEl&&!dEl.hidden;el.querySelectorAll('[required]').forEach(i=>{if(!i.value.trim()){i.classList.add('bad');bad=true}});
 if(dv)el.querySelectorAll('[data-req]').forEach(i=>{if(!i.value.trim()){i.classList.add('bad');bad=true}});
-if(!dv)['doc_type','doc_number','doc_issued','doc_authority','doc_country'].forEach(k=>o[k]='');return o;});
+if(!dv)['doc_type','doc_number','doc_issued','doc_authority'].forEach(k=>o[k]='');return o;});
 const cp=$('c_privacy'),cc=$('c_card');cp.parentElement.style.color='';cc.parentElement.style.color='';
 if(!cp.checked){bad=true;cp.parentElement.style.color='var(--err)'}if(D.saalfelden&&!cc.checked){bad=true;cc.parentElement.style.color='var(--err)'}
 if(!has){bad=true;err.textContent=T.need_sign;err.hidden=false}
