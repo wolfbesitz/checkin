@@ -16,6 +16,7 @@ canvas{width:100%;height:160px;border:1px solid var(--bd);border-radius:8px;back
 .chk{display:flex;gap:10px;align-items:flex-start;margin:10px 0;font-size:14px}.chk input{width:20px;height:20px;margin-top:2px}
 .err{color:var(--err);font-size:14px;margin:8px 0}.ok{text-align:center;padding:40px 10px}.ok h1{color:var(--acc)}
 .rm{float:right}[hidden]{display:none!important}
+.date{display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:6px}.date select{padding:11px 6px}
 </style></head><body><div class="wrap">
 <div class="hdr"><h1 id="h_title"></h1><div class="lang"><a id="l_de">DE</a><a id="l_en">EN</a></div></div>
 <p class="m" id="h_intro"></p>
@@ -72,7 +73,8 @@ places:{de:"Schlafplätze gewählt: {p} für {n} Personen",en:"Sleeping places s
 beds_err:{de:"Bitte Schlafplätze für {n} Personen wählen (Kinder unter 2 Jahren schlafen im Babybett).",en:"Please select sleeping places for {n} persons (children under 2 sleep in the travel cot)."},
 beds_save:{de:"Betten speichern",en:"Save beds"},beds_saved_h:{de:"Betten gespeichert",en:"Beds saved"},beds_saved_p:{de:"Die Reinigung bereitet es so vor. Bis 24 Stunden vor der Anreise kannst du es hier jederzeit ändern.",en:"Our team will prepare it this way. You can change it here any time until 24 hours before arrival."},
 beds_change_h:{de:"Deine Betten",en:"Your beds"},beds_locked:{de:"Die Anreise ist in weniger als 24 Stunden. Für Änderungen schreib uns direkt im Chat, wir kümmern uns darum.",en:"Arrival is in less than 24 hours. For changes just message us in the chat and we take care of it."},
-rooms:{de:"",en:""}};
+day:{de:"Tag",en:"Day"},month:{de:"Monat",en:"Month"},year:{de:"Jahr",en:"Year"},
+months:{de:["Jänner","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"],en:["January","February","March","April","May","June","July","August","September","October","November","December"]}};
 const ROOM_EN={"Schlafzimmer":"Bedroom","Schlafzimmer 1":"Bedroom 1","Schlafzimmer 2":"Bedroom 2","Schlafzimmer 3":"Bedroom 3","Schlafzimmer 4":"Bedroom 4","Wohnzimmer":"Living room","Küche/Wohnbereich":"Kitchen/living area"};
 const CAPS={double:2,sofa:2,couch:1,bunk:2,single:1},BORDER=["double","bunk","single","couch","sofa"];
 let bedsTouched=false;
@@ -84,6 +86,7 @@ box.insertAdjacentHTML('beforeend','<div class="row" style="align-items:center;m
 box.lastElementChild.querySelector('select').value=String(v);});
 $('c_crib').checked=!!crib;$('c_crib').disabled=!editable;$('bedsum').dataset.n=n;updatePlaces();
 box.querySelectorAll('select').forEach(sel=>sel.addEventListener('change',()=>{bedsTouched=true;updatePlaces()}));}
+function markBad(i){if(i.type==='hidden'){i.parentElement.querySelectorAll('select').forEach(x=>{if(!x.value)x.classList.add('bad')})}else i.classList.add('bad')}
 function readBeds(){const c={};document.querySelectorAll('[data-bed]').forEach(s=>{c[s.dataset.bed]=Number(s.value)});return c}
 function updatePlaces(){const c=readBeds(),p=Object.values(c).reduce((a,b)=>a+b,0),n=Number($('bedsum').dataset.n||0);$('bedsum').textContent=T.places.replace('{p}',p).replace('{n}',n);$('bedsum').style.color=(p>=Math.min(n,maxPlaces())&&p<=n+1)?'var(--m)':'var(--err)';return p}
 function maxPlaces(){return (D.beds||[]).reduce((a,b)=>a+CAPS[b.type],0)}
@@ -102,17 +105,23 @@ let dn;try{dn=new Intl.DisplayNames([l],{type:'region'})}catch(e){}const cn=c=>{
 copts=C.map(c=>({c,n:cn(c)})).sort((a,b)=>a.n.localeCompare(b.n,l)).map(o=>'<option value="'+o.c+'">'+esc(o.n)+'</option>').join('');}
 function info(kind){$('loading').hidden=true;$('app').hidden=true;$('info').hidden=false;$('info_h').textContent=T[kind+'_h'];$('info_p').textContent=T[kind+'_p'];}
 function fmtDate(s){try{return new Date(s+'T00:00:00').toLocaleDateString(L==='de'?'de-AT':'en-GB',{weekday:'short',day:'numeric',month:'long',year:'numeric'})}catch(e){return s}}
+function dateField(name,req,kind){const y0=new Date().getFullYear(),yMin=kind==='birth'?1920:y0-25;let ys='';for(let y=y0;y>=yMin;y--)ys+='<option value="'+y+'">'+y+'</option>';
+let ms='';T.months.forEach((m,i)=>{ms+='<option value="'+String(i+1).padStart(2,'0')+'">'+m+'</option>'});let ds='';for(let d=1;d<=31;d++)ds+='<option value="'+String(d).padStart(2,'0')+'">'+d+'</option>';
+return '<div class="date"><select class="d-d"><option value="">'+T.day+'</option>'+ds+'</select><select class="d-m"><option value="">'+T.month+'</option>'+ms+'</select><select class="d-y"><option value="">'+T.year+'</option>'+ys+'</select><input type="hidden" name="'+name+'" '+(req==='req'?'required':req==='data'?'data-req="1"':'')+'></div>';}
+function wireDates(el){el.querySelectorAll('.date').forEach(w=>{const d=w.querySelector('.d-d'),m=w.querySelector('.d-m'),y=w.querySelector('.d-y'),h=w.querySelector('input');
+const upd=()=>{if(m.value&&y.value){const max=new Date(Number(y.value),Number(m.value),0).getDate();[...d.options].forEach(o=>{if(o.value)o.disabled=Number(o.value)>max});if(d.value&&Number(d.value)>max)d.value=''}
+const v=(d.value&&m.value&&y.value)?y.value+'-'+m.value+'-'+d.value:'';if(v!==h.value){h.value=v;h.dispatchEvent(new Event('change'))}};[d,m,y].forEach(x=>x.addEventListener('change',upd));});}
 function card(i){const main=i===1;n=Math.max(n,i);const SAAL=D.saalfelden;
 return '<div class="card g" data-i="'+i+'">'+(main?'':'<button type="button" class="link rm">'+T.remove+'</button>')+'<h2>'+(main?T.main:T.companion+' '+(i-1))+'</h2>'
 +'<div class="row"><div><label>'+T.last+'</label><input name="last_name" required value="'+(main?esc(D.lastName):'')+'"></div><div><label>'+T.first+'</label><input name="first_name" required value="'+(main?esc(D.firstName):'')+'"></div></div>'
-+'<div class="row"><div><label>'+T.birth+'</label><input name="birth_date" type="date" required max="'+new Date().toISOString().slice(0,10)+'"></div>'+(main?'<div><label>'+T.gender+'</label><select name="gender"><option value="">'+T.choose+'</option><option value="m">'+T.g_m+'</option><option value="f">'+T.g_f+'</option><option value="d">'+T.g_d+'</option><option value="x">'+T.g_x+'</option></select></div>':'')+'</div>'
++'<div class="row"><div><label>'+T.birth+'</label>'+dateField('birth_date','req','birth')+'</div>'+(main?'<div><label>'+T.gender+'</label><select name="gender"><option value="">'+T.choose+'</option><option value="m">'+T.g_m+'</option><option value="f">'+T.g_f+'</option><option value="d">'+T.g_d+'</option><option value="x">'+T.g_x+'</option></select></div>':'')+'</div>'
 +'<label>'+T.nat+'</label><select name="nationality" required><option value="">'+T.choose+'</option>'+copts+'</select>'
 +(main?'<div style="margin-top:8px"><b style="font-size:13px;color:var(--m)">'+T.addr+'</b><label>'+T.street+'</label><input name="street" required><div class="row"><div><label>'+T.zip+'</label><input name="zip" required></div><div><label>'+T.city+'</label><input name="city" required></div></div><label>'+T.country+'</label><select name="country" required><option value="">'+T.choose+'</option>'+copts+'</select></div>':'')
 +((main||SAAL)?'<label>'+(SAAL?T.email_card:T.email)+'</label><input name="email" type="email" '+(main?'required':'')+' value="'+(main?esc(D.email):'')+'">':'')
-+(main?'<div class="doc" hidden><label style="margin-top:4px"><b>'+T.doc+'</b></label><small>'+T.doc_why+'</small><div class="row"><div><label>'+T.doc_type+'</label><select name="doc_type"><option value="passport">'+T.passport+'</option><option value="id_card">'+T.id_card+'</option></select></div><div><label>'+T.doc_no+'</label><input name="doc_number" data-req="1"></div></div><div class="row"><div><label>'+T.doc_issued+'</label><input name="doc_issued" type="date" data-req="1"></div><div><label>'+T.doc_auth+'</label><input name="doc_authority" data-req="1" placeholder="'+T.doc_auth_ph+'"></div></div></div>':'')
++(main?'<div class="doc" hidden><label style="margin-top:4px"><b>'+T.doc+'</b></label><small>'+T.doc_why+'</small><div class="row"><div><label>'+T.doc_type+'</label><select name="doc_type"><option value="passport">'+T.passport+'</option><option value="id_card">'+T.id_card+'</option></select></div><div><label>'+T.doc_no+'</label><input name="doc_number" data-req="1"></div></div><div class="row"><div><label>'+T.doc_issued+'</label>'+dateField('doc_issued','data','issued')+'</div><div><label>'+T.doc_auth+'</label><input name="doc_authority" data-req="1" placeholder="'+T.doc_auth_ph+'"></div></div></div>':'')
 +'</div>';}
 function mainNat(){const m=document.querySelector('.g[data-i="1"] [name=nationality]');return m?m.value:''}
-function wire(el){const nat=el.querySelector('[name=nationality]'),doc=el.querySelector('.doc');
+function wire(el){wireDates(el);const nat=el.querySelector('[name=nationality]'),doc=el.querySelector('.doc');
 if(el.dataset.i!=='1'&&!nat.value&&mainNat()){nat.value=mainNat();nat.dataset.auto='1'}
 if(el.dataset.i==='1')nat.addEventListener('change',()=>{document.querySelectorAll('.g:not([data-i="1"]) [name=nationality]').forEach(o=>{if(!o.value||o.dataset.auto){o.value=nat.value;o.dataset.auto='1';o.dispatchEvent(new CustomEvent('change',{detail:{auto:true}}))}})});
 else nat.addEventListener('change',e=>{if(!(e.detail&&e.detail.auto))delete nat.dataset.auto});
@@ -149,8 +158,8 @@ try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/
 const j=await r.json().catch(()=>({}));if(!r.ok||!j.ok)throw new Error(j.error||r.status);$('app').hidden=true;$('info').hidden=false;$('info_h').textContent=T.beds_saved_h;$('info_p').textContent=T.beds_saved_p;window.scrollTo(0,0);}
 catch(ex){err.textContent=T.err+' ('+ex.message+')';err.hidden=false;go.disabled=false;go.textContent=T.beds_save}return;}
 const guests=[...document.querySelectorAll('.g')].map((el,idx)=>{const o={position:idx+1};el.querySelectorAll('input,select').forEach(i=>{o[i.name]=i.value.trim()});
-const dEl=el.querySelector('.doc');const dv=!!dEl&&!dEl.hidden;el.querySelectorAll('[required]').forEach(i=>{if(!i.value.trim()){i.classList.add('bad');bad=true}});
-if(dv)el.querySelectorAll('[data-req]').forEach(i=>{if(!i.value.trim()){i.classList.add('bad');bad=true}});
+const dEl=el.querySelector('.doc');const dv=!!dEl&&!dEl.hidden;el.querySelectorAll('[required]').forEach(i=>{if(!i.value.trim()){markBad(i);bad=true}});
+if(dv)el.querySelectorAll('[data-req]').forEach(i=>{if(!i.value.trim()){markBad(i);bad=true}});
 if(!dv)['doc_type','doc_number','doc_issued','doc_authority'].forEach(k=>o[k]='');return o;});
 const cp=$('c_privacy'),cc=$('c_card');cp.parentElement.style.color='';cc.parentElement.style.color='';
 if(!cp.checked){bad=true;cp.parentElement.style.color='var(--err)'}if(D.saalfelden&&!cc.checked){bad=true;cc.parentElement.style.color='var(--err)'}
