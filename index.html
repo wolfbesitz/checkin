@@ -26,7 +26,9 @@ canvas{width:100%;height:160px;border:1px solid var(--bd);border-radius:8px;back
 <form id="f" novalidate>
 <div id="guests"></div>
 <button type="button" class="link" id="add"></button>
-<div class="card">
+<div class="card" id="bedcard" hidden><h2 id="beds_h"></h2><p class="m" id="beds_intro"></p><div id="bedrows"></div><p class="m" id="bedsum" style="margin:10px 0 0"></p>
+<label class="chk" style="margin-top:12px"><input type="checkbox" id="c_crib"> <span id="t_crib"></span></label><p class="m" id="beds_locked" hidden></p></div>
+<div class="card" id="consentcard">
 <label class="chk"><input type="checkbox" id="c_privacy"> <span id="t_privacy"></span></label>
 <label class="chk" id="row_card" hidden><input type="checkbox" id="c_card"> <span id="t_card"></span></label>
 <label id="t_sign"></label><canvas id="sig"></canvas><button type="button" class="link" id="clr"></button>
@@ -61,7 +63,31 @@ invalid_h:{de:"Link ungültig",en:"Invalid link"},invalid_p:{de:"Dieser Link ist
 err:{de:"Da ist etwas schiefgelaufen. Bitte prüfe die rot markierten Felder.",en:"Something went wrong. Please check the fields marked in red."},
 need_sign:{de:"Bitte unterschreiben.",en:"Please sign."},
 guests_hint:{de:"Laut Buchung reist ihr zu {n}. Du füllst nur dieses eine Formular für deine Gruppe aus und ergänzt alle Mitreisenden unten.",en:"According to the booking you are {n} people. You fill in just this one form for your group and add all companions below."},
-offline:{de:"Verbindung fehlgeschlagen. Bitte später noch einmal versuchen.",en:"Connection failed. Please try again later."}};
+offline:{de:"Verbindung fehlgeschlagen. Bitte später noch einmal versuchen.",en:"Connection failed. Please try again later."},
+beds_h:{de:"Betten",en:"Beds"},beds_intro:{de:"Wir bereiten standardmäßig ein Doppelbett pro 2 Personen vor. Hier legst du fest, wer wo schläft.",en:"By default we prepare one double bed per 2 persons. Here you decide who sleeps where."},
+bt_double:{de:"Doppelbett 180 cm",en:"Double bed 180 cm"},bt_sofa:{de:"Schlafsofa",en:"Sofa bed"},bt_couch:{de:"Schlafcouch",en:"Sofa couch"},bt_bunk:{de:"Stockbett",en:"Bunk bed"},bt_single:{de:"Einzelbett",en:"Single bed"},
+free:{de:"bleibt frei",en:"stays free"},p1:{de:"1 Person",en:"1 person"},p2:{de:"2 Personen",en:"2 persons"},
+crib:{de:"Babybett (Reisebett) vorbereiten",en:"Prepare a travel cot"},
+places:{de:"Schlafplätze gewählt: {p} für {n} Personen",en:"Sleeping places selected: {p} for {n} persons"},
+beds_err:{de:"Bitte Schlafplätze für {n} Personen wählen (Kinder unter 2 Jahren schlafen im Babybett).",en:"Please select sleeping places for {n} persons (children under 2 sleep in the travel cot)."},
+beds_save:{de:"Betten speichern",en:"Save beds"},beds_saved_h:{de:"Betten gespeichert",en:"Beds saved"},beds_saved_p:{de:"Die Reinigung bereitet es so vor. Bis 24 Stunden vor der Anreise kannst du es hier jederzeit ändern.",en:"Our team will prepare it this way. You can change it here any time until 24 hours before arrival."},
+beds_change_h:{de:"Deine Betten",en:"Your beds"},beds_locked:{de:"Die Anreise ist in weniger als 24 Stunden. Für Änderungen schreib uns direkt im Chat, wir kümmern uns darum.",en:"Arrival is in less than 24 hours. For changes just message us in the chat and we take care of it."},
+rooms:{de:"",en:""}};
+const ROOM_EN={"Schlafzimmer":"Bedroom","Schlafzimmer 1":"Bedroom 1","Schlafzimmer 2":"Bedroom 2","Schlafzimmer 3":"Bedroom 3","Schlafzimmer 4":"Bedroom 4","Wohnzimmer":"Living room","Küche/Wohnbereich":"Kitchen/living area"};
+const CAPS={double:2,sofa:2,couch:1,bunk:2,single:1},BORDER=["double","bunk","single","couch","sofa"];
+let bedsTouched=false;
+function defaultCfg(beds,n){const c={};let left=Math.max(0,n);for(const t of BORDER)for(const b of beds.filter(x=>x.type===t)){const k=Math.min(CAPS[t],left);c[b.id]=k;left-=k}return c}
+function sleepersFromCards(){let n=0;document.querySelectorAll('.g').forEach(el=>{const bd=el.querySelector('[name=birth_date]').value;const age=bd?(Date.now()-Date.parse(bd))/31557600000:99;if(age>=2)n++});return n}
+function renderBeds(cfg,crib,n,editable){const box=$('bedrows');box.innerHTML='';(D.beds||[]).forEach(b=>{const cap=CAPS[b.type],v=cfg[b.id]||0;
+let opts='<option value="0">'+T.free+'</option><option value="1">'+T.p1+'</option>'+(cap>1?'<option value="2">'+T.p2+'</option>':'');
+box.insertAdjacentHTML('beforeend','<div class="row" style="align-items:center;margin:6px 0"><div><b style="font-size:15px">'+esc(L==='de'?b.room:(ROOM_EN[b.room]||b.room))+'</b><br><span style="color:var(--m);font-size:13px">'+T['bt_'+b.type]+'</span></div><div><select name="bed_'+b.id+'" data-bed="'+b.id+'" '+(editable?'':'disabled')+'>'+opts+'</select></div></div>');
+box.lastElementChild.querySelector('select').value=String(v);});
+$('c_crib').checked=!!crib;$('c_crib').disabled=!editable;$('bedsum').dataset.n=n;updatePlaces();
+box.querySelectorAll('select').forEach(sel=>sel.addEventListener('change',()=>{bedsTouched=true;updatePlaces()}));}
+function readBeds(){const c={};document.querySelectorAll('[data-bed]').forEach(s=>{c[s.dataset.bed]=Number(s.value)});return c}
+function updatePlaces(){const c=readBeds(),p=Object.values(c).reduce((a,b)=>a+b,0),n=Number($('bedsum').dataset.n||0);$('bedsum').textContent=T.places.replace('{p}',p).replace('{n}',n);$('bedsum').style.color=(p>=Math.min(n,maxPlaces())&&p<=n+1)?'var(--m)':'var(--err)';return p}
+function maxPlaces(){return (D.beds||[]).reduce((a,b)=>a+CAPS[b.type],0)}
+function refreshBedDefaults(){if(bedsTouched||!D||!D.beds||!D.beds.length)return;const n=sleepersFromCards();renderBeds(defaultCfg(D.beds,n),$('c_crib').checked,n,true);bedsTouched=false;}
 const C="AF AX AL DZ AS AD AO AI AQ AG AR AM AW AU AT AZ BS BH BD BB BY BE BZ BJ BM BT BO BQ BA BW BV BR IO BN BG BF BI CV KH CM CA KY CF TD CL CN CX CC CO KM CG CD CK CR CI HR CU CW CY CZ DK DJ DM DO EC EG SV GQ ER EE SZ ET FK FO FJ FI FR GF PF TF GA GM GE DE GH GI GR GL GD GP GU GT GG GN GW GY HT HM VA HN HK HU IS IN ID IR IQ IE IM IL IT JM JP JE JO KZ KE KI KP KR KW KG LA LV LB LS LR LY LI LT LU MO MG MW MY MV ML MT MH MQ MR MU YT MX FM MD MC MN ME MS MA MZ MM NA NR NP NL NC NZ NI NE NG NU NF MK MP NO OM PK PW PS PA PG PY PE PH PN PL PT PR QA RE RO RU RW BL SH KN LC MF PM VC WS SM ST SA SN RS SC SL SG SX SK SI SB SO ZA GS SS ES LK SD SR SJ SE CH SY TW TJ TZ TH TL TG TK TO TT TN TR TM TC TV UG UA AE GB US UM UY UZ VU VE VN VG VI WF EH YE ZM ZW XK".split(" ");
 const q=new URLSearchParams(location.search), TOKEN=q.get('t')||'';
 function guessCountry(loc){if(!loc)return'';const part=loc.split(',').pop().trim().toLowerCase();if(!part)return'';
@@ -91,15 +117,21 @@ if(el.dataset.i!=='1'&&!nat.value&&mainNat()){nat.value=mainNat();nat.dataset.au
 if(el.dataset.i==='1')nat.addEventListener('change',()=>{document.querySelectorAll('.g:not([data-i="1"]) [name=nationality]').forEach(o=>{if(!o.value||o.dataset.auto){o.value=nat.value;o.dataset.auto='1';o.dispatchEvent(new CustomEvent('change',{detail:{auto:true}}))}})});
 else nat.addEventListener('change',e=>{if(!(e.detail&&e.detail.auto))delete nat.dataset.auto});
 nat.addEventListener('change',()=>{if(doc)doc.hidden=!nat.value||nat.value==='AT';const co=el.querySelector('[name=country]');if(co&&!co.value)co.value=nat.value;});
-const rm=el.querySelector('.rm');if(rm)rm.onclick=()=>el.remove();}
+const bd=el.querySelector('[name=birth_date]');if(bd)bd.addEventListener('change',refreshBedDefaults);
+const rm=el.querySelector('.rm');if(rm)rm.onclick=()=>{el.remove();refreshBedDefaults()};}
 function render(){const G=$('guests');G.innerHTML='';n=0;
 $('h_stay').textContent=T.stay;$('s_prop').textContent=D.property;$('s_addr').textContent=D.address||'';$('s_dates').textContent=fmtDate(D.arrival)+' → '+fmtDate(D.departure);$('s_hint').textContent=T.guests_hint.replace('{n}',D.guestsTotal);
 $('add').textContent=T.add;$('t_privacy').textContent=T.consent_privacy;$('t_card').textContent=T.consent_card;$('row_card').hidden=!D.saalfelden;$('t_sign').textContent=T.sign;$('clr').textContent=T.clear;$('go').textContent=T.submit;
 for(let i=1;i<=Math.max(1,D.guestsTotal);i++)G.insertAdjacentHTML('beforeend',card(i));G.querySelectorAll('.g').forEach(wire);
 const cc0=guessCountry(D.location);if(cc0){const m=G.querySelector('.g[data-i="1"]');['nationality','country'].forEach(k=>{const el=m.querySelector('[name='+k+']');if(el&&!el.value)el.value=cc0;});m.querySelector('[name=nationality]').dispatchEvent(new Event('change'));}
+if(D.beds&&D.beds.length){$('bedcard').hidden=false;$('beds_h').textContent=T.beds_h;$('beds_intro').textContent=T.beds_intro;$('t_crib').textContent=T.crib;bedsTouched=false;renderBeds(D.defaultBeds||defaultCfg(D.beds,D.guestsTotal),false,D.guestsTotal,true);}
 $('loading').hidden=true;$('info').hidden=true;$('app').hidden=false;fit();}
-$('add').onclick=()=>{const G=$('guests');G.insertAdjacentHTML('beforeend',card(n+1));wire(G.lastElementChild)};
-$('l_de').onclick=()=>{setLang('de');if(D)render()};$('l_en').onclick=()=>{setLang('en');if(D)render()};
+function renderBedsMode(){const ed=!!D.canEdit;$('h_stay').textContent=T.stay;$('s_prop').textContent=D.property;$('s_addr').textContent=D.address||'';$('s_dates').textContent=fmtDate(D.arrival)+' → '+fmtDate(D.departure);$('s_hint').textContent='';
+$('guests').innerHTML='';$('add').hidden=true;$('consentcard').hidden=true;$('bedcard').hidden=false;$('beds_h').textContent=T.beds_change_h;$('beds_intro').textContent=ed?T.beds_intro:'';$('t_crib').textContent=T.crib;
+renderBeds(D.bedConfig||{},D.crib,D.sleepers,ed);$('beds_locked').hidden=ed;$('beds_locked').textContent=T.beds_locked;$('go').textContent=T.beds_save;$('go').hidden=!ed;
+$('loading').hidden=true;$('info').hidden=true;$('app').hidden=false;}
+$('add').onclick=()=>{const G=$('guests');G.insertAdjacentHTML('beforeend',card(n+1));wire(G.lastElementChild);refreshBedDefaults()};
+$('l_de').onclick=()=>{setLang('de');if(D)(D.mode==='beds'?renderBedsMode():render())};$('l_en').onclick=()=>{setLang('en');if(D)(D.mode==='beds'?renderBedsMode():render())};
 // Unterschrift
 const cv=$('sig'),cx=cv.getContext('2d');let drawing=false,has=false;
 function fit(){const r=cv.getBoundingClientRect();if(!r.width)return;cv.width=r.width*2;cv.height=r.height*2;cx.setTransform(1,0,0,1,0,0);cx.scale(2,2);cx.lineWidth=2;cx.lineCap='round';cx.strokeStyle='#111';has=false;}
@@ -111,6 +143,11 @@ cv.addEventListener('touchstart',st,{passive:false});cv.addEventListener('touchm
 $('clr').onclick=()=>{cx.clearRect(0,0,cv.width,cv.height);has=false};
 // Absenden
 $('f').onsubmit=async e=>{e.preventDefault();const err=$('err');err.hidden=true;let bad=false;document.querySelectorAll('.bad').forEach(x=>x.classList.remove('bad'));
+if(D.mode==='beds'){const p=updatePlaces();if(!(p>=Math.min(D.sleepers,maxPlaces())&&p<=D.sleepers+1)){err.textContent=T.beds_err.replace('{n}',D.sleepers);err.hidden=false;return}
+const go=$('go');go.disabled=true;go.textContent=T.sending;
+try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:TOKEN,lang:L,action:'beds',beds:readBeds(),crib:$('c_crib').checked})});
+const j=await r.json().catch(()=>({}));if(!r.ok||!j.ok)throw new Error(j.error||r.status);$('app').hidden=true;$('info').hidden=false;$('info_h').textContent=T.beds_saved_h;$('info_p').textContent=T.beds_saved_p;window.scrollTo(0,0);}
+catch(ex){err.textContent=T.err+' ('+ex.message+')';err.hidden=false;go.disabled=false;go.textContent=T.beds_save}return;}
 const guests=[...document.querySelectorAll('.g')].map((el,idx)=>{const o={position:idx+1};el.querySelectorAll('input,select').forEach(i=>{o[i.name]=i.value.trim()});
 const dEl=el.querySelector('.doc');const dv=!!dEl&&!dEl.hidden;el.querySelectorAll('[required]').forEach(i=>{if(!i.value.trim()){i.classList.add('bad');bad=true}});
 if(dv)el.querySelectorAll('[data-req]').forEach(i=>{if(!i.value.trim()){i.classList.add('bad');bad=true}});
@@ -118,9 +155,10 @@ if(!dv)['doc_type','doc_number','doc_issued','doc_authority'].forEach(k=>o[k]=''
 const cp=$('c_privacy'),cc=$('c_card');cp.parentElement.style.color='';cc.parentElement.style.color='';
 if(!cp.checked){bad=true;cp.parentElement.style.color='var(--err)'}if(D.saalfelden&&!cc.checked){bad=true;cc.parentElement.style.color='var(--err)'}
 if(!has){bad=true;err.textContent=T.need_sign;err.hidden=false}
+let bedsOut=null,cribOut=false;if(D.beds&&D.beds.length){const n=sleepersFromCards();$('bedsum').dataset.n=n;const p=updatePlaces();bedsOut=readBeds();cribOut=$('c_crib').checked;if(!(p>=Math.min(n,maxPlaces())&&p<=n+1)){bad=true;err.textContent=T.beds_err.replace('{n}',n);err.hidden=false;$('bedcard').scrollIntoView({behavior:'smooth',block:'center'})}}
 if(bad){if(err.hidden){err.textContent=T.err;err.hidden=false}const b=document.querySelector('.bad');if(b)b.scrollIntoView({behavior:'smooth',block:'center'});return}
 const go=$('go');go.disabled=true;go.textContent=T.sending;
-try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:TOKEN,lang:L,guests,consents:{privacy:true,card:!!(D.saalfelden&&cc.checked)},signature:cv.toDataURL('image/png')})});
+try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:TOKEN,lang:L,guests,beds:bedsOut,crib:cribOut,consents:{privacy:true,card:!!(D.saalfelden&&cc.checked)},signature:cv.toDataURL('image/png')})});
 const j=await r.json().catch(()=>({}));if(r.status===409){info('already');return}if(!r.ok||!j.ok)throw new Error(j.error||r.status);
 $('app').hidden=true;info('done');window.scrollTo(0,0);}
 catch(ex){err.textContent=T.err+' ('+ex.message+')';err.hidden=false;go.disabled=false;go.textContent=T.submit}};
@@ -129,6 +167,6 @@ catch(ex){err.textContent=T.err+' ('+ex.message+')';err.hidden=false;go.disabled
 if(!TOKEN){info('invalid');return}
 try{const r=await fetch(API+'?t='+encodeURIComponent(TOKEN));const j=await r.json();
 if(!j.ok){if(!LQ&&j.lang)setLang(j.lang);info(j.kind==='already'?'already':'invalid');return}
-D=j;if(!LQ&&j.lang)setLang(j.lang);render();}
+D=j;if(!LQ&&j.lang)setLang(j.lang);if(j.mode==='beds')renderBedsMode();else render();}
 catch(e){$('loading').innerHTML='<p>'+T.offline+'</p>'}})();
 </script></body></html>
