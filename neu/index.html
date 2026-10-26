@@ -1,0 +1,185 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
+<title>Guest registration</title>
+<style>
+:root{--b:#1a1a1a;--m:#666;--bg:#f6f5f2;--card:#fff;--acc:#2a6f5f;--err:#c0392b;--bd:#ddd}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--b);font-size:16px;line-height:1.4}
+.wrap{max-width:640px;margin:0 auto;padding:16px}h1{font-size:22px;margin:8px 0 4px}h2{font-size:17px;margin:0 0 10px}p.m{color:var(--m);margin:0 0 14px;font-size:15px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:14px}
+label{display:block;font-size:13px;color:var(--m);margin:10px 0 4px}input,select{width:100%;padding:11px 12px;border:1px solid var(--bd);border-radius:8px;font-size:16px;background:#fff}
+input.bad,select.bad{border-color:var(--err);background:#fff6f5}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media(max-width:420px){.row{grid-template-columns:1fr}}
+.doc{border-top:1px dashed var(--bd);margin-top:12px;padding-top:6px}.doc small{color:var(--m)}
+button{font-size:16px;border-radius:10px;padding:12px 16px;border:1px solid var(--bd);background:#fff;cursor:pointer}
+button.primary{background:var(--acc);color:#fff;border-color:var(--acc);width:100%;padding:15px;font-weight:600}button:disabled{opacity:.6}
+button.link{border:none;background:none;color:var(--acc);padding:6px 0}
+.hdr{display:flex;justify-content:space-between;align-items:center}.lang a{color:var(--m);text-decoration:none;margin-left:10px;font-size:14px;cursor:pointer}.lang a.on{color:var(--b);font-weight:600}
+canvas{width:100%;height:160px;border:1px solid var(--bd);border-radius:8px;background:#fff;touch-action:none}
+.chk{display:flex;gap:10px;align-items:flex-start;margin:10px 0;font-size:14px}.chk input{width:20px;height:20px;margin-top:2px}
+.err{color:var(--err);font-size:14px;margin:8px 0}.ok{text-align:center;padding:40px 10px}.ok h1{color:var(--acc)}
+.rm{float:right}[hidden]{display:none!important}
+.room{display:grid;grid-template-columns:110px 1fr;gap:12px;padding:12px 0;border-top:1px solid var(--bd)}.room:first-child{border-top:none}.room>b{font-size:15px;padding-top:10px}.it{display:grid;grid-template-columns:1fr 140px;gap:8px;align-items:center;margin:0 0 8px}.it:last-child{margin:0}.it span{font-size:14px}.sum{font-weight:600}.sum.okk{color:var(--acc)}@media(max-width:420px){.room{grid-template-columns:88px 1fr;gap:8px}.it{grid-template-columns:1fr}.it span{color:var(--m);font-size:13px}}
+.row>div{min-width:0}input,select{min-width:0;max-width:100%}.date{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) minmax(0,1.1fr);gap:6px}.date select{padding:11px 4px;text-overflow:ellipsis}
+</style></head><body><div class="wrap">
+<div class="hdr"><h1 id="h_title"></h1><div class="lang"><a id="l_de">DE</a><a id="l_en">EN</a></div></div>
+<p class="m" id="h_intro"></p>
+<div id="loading" class="ok"><p>…</p></div>
+<div id="info" class="ok" hidden><h1 id="info_h"></h1><p id="info_p"></p></div>
+<div id="app" hidden>
+<div class="card"><h2 id="h_stay"></h2><div><b id="s_prop"></b><br><span id="s_addr" style="color:var(--m)"></span><br><span id="s_dates"></span></div><p class="m" style="margin-top:8px" id="s_hint"></p></div>
+<form id="f" novalidate>
+<div id="guests"></div>
+<button type="button" class="link" id="add"></button>
+<div class="card" id="bedcard" hidden><h2 id="beds_h"></h2><p class="m" id="beds_intro"></p><div id="bedrows"></div><div class="room"><b id="t_crib"></b><div><div class="it"><span id="t_crib_s"></span><select id="c_crib"><option value="0" id="o_no"></option><option value="1" id="o_yes"></option></select></div></div></div><p class="m" id="bedsum" style="margin:10px 0 0"></p><p class="m" id="beds_locked" hidden></p></div>
+<div class="card" id="consentcard">
+<p class="m" id="t_privacy" style="font-size:13px"></p>
+<label class="chk" id="row_card" hidden><input type="checkbox" id="c_card" checked> <span><span id="t_card"></span><br><small style="color:var(--m)" id="t_card_s"></small></span></label>
+<label id="t_sign"></label><canvas id="sig"></canvas><button type="button" class="link" id="clr"></button>
+</div>
+<div class="err" id="err" hidden></div>
+<button class="primary" id="go"></button>
+</form>
+</div>
+</div>
+<script>
+const API='https://awcqjqbvsokfqhofzodn.supabase.co/functions/v1/form';
+const S={
+title:{de:"Gästeregistrierung",en:"Guest registration"},
+intro:{de:"Österreich verlangt für jeden Gast eine Meldung (Meldegesetz). Du füllst nur ein Formular für deine Gruppe aus: Hauptgast oben, alle Mitreisenden darunter. Dauert ca. 2 Minuten.",en:"Austrian law requires every guest to be registered. You fill in just one form for your whole group: main guest on top, all companions below. It takes about 2 minutes."},
+stay:{de:"Aufenthalt",en:"Stay"},main:{de:"Hauptgast (du)",en:"Main guest (you)"},companion:{de:"Mitreisende Person",en:"Travelling companion"},
+last:{de:"Familienname",en:"Last name"},first:{de:"Vorname(n)",en:"First name(s)"},birth:{de:"Geburtsdatum",en:"Date of birth"},gender:{de:"Geschlecht",en:"Gender"},
+g_m:{de:"männlich",en:"male"},g_f:{de:"weiblich",en:"female"},g_d:{de:"divers",en:"diverse"},g_x:{de:"keine Angabe",en:"prefer not to say"},
+nat:{de:"Staatsangehörigkeit",en:"Nationality"},choose:{de:"bitte wählen",en:"please select"},addr:{de:"Adresse (Hauptwohnsitz)",en:"Home address"},
+street:{de:"Straße, Hausnummer",en:"Street, number"},zip:{de:"PLZ",en:"Postcode"},city:{de:"Ort",en:"City"},country:{de:"Land",en:"Country"},
+email:{de:"E-Mail",en:"E-mail"},email_card:{de:"E-Mail (für die Saalfelden Leogang Card)",en:"E-mail (for the Saalfelden Leogang Card)"},
+doc:{de:"Reisedokument des Hauptgasts",en:"Travel document of the main guest"},doc_why:{de:"Gesetzlich nötig, wenn du keine österreichische Staatsbürgerschaft hast (§ 5 Meldegesetz). Kein Upload, nur abtippen.",en:"Required by Austrian law for non-Austrian citizens (§ 5 Meldegesetz). No upload, just type it in."},doc_auth_ph:{de:"z. B. Stadt Berlin",en:"e.g. HM Passport Office"},
+doc_type:{de:"Art",en:"Type"},passport:{de:"Reisepass",en:"Passport"},id_card:{de:"Personalausweis",en:"ID card"},doc_no:{de:"Nummer",en:"Number"},doc_issued:{de:"Ausstellungsdatum",en:"Date of issue"},
+doc_auth:{de:"Ausstellende Behörde",en:"Issuing authority"},doc_country:{de:"Ausstellender Staat",en:"Issuing country"},doc_opt:{de:"Für Familienangehörige des Hauptgastes freiwillig.",en:"Optional for family members of the main guest."},
+add:{de:"+ Weitere Person",en:"+ Add person"},remove:{de:"Entfernen",en:"Remove"},
+consent_privacy:{de:"Wir verwenden deine Angaben für die gesetzliche Gästemeldung (Meldegesetz) und bewahren sie 7 Jahre auf.",en:"We use your details for the legal guest registration (Austrian Registration Act) and keep them for 7 years."},
+consent_card:{de:"Ich möchte die kostenlose Saalfelden Leogang Card (u. a. Bergbahn und Bus gratis).",en:"I would like the free Saalfelden Leogang Card (incl. free cable car and bus)."},consent_card_s:{de:"Dafür geben wir Name, Geburtsdatum und E-Mail an den Tourismusverband Saalfelden Leogang weiter.",en:"For this we pass name, date of birth and e-mail on to the Saalfelden Leogang tourist board."},
+sign:{de:"Unterschrift des Hauptgastes (mit Finger oder Maus)",en:"Signature of the main guest (finger or mouse)"},clear:{de:"Löschen",en:"Clear"},
+submit:{de:"Registrierung absenden",en:"Submit registration"},sending:{de:"Wird gesendet …",en:"Sending …"},
+done_h:{de:"Danke, Registrierung erhalten!",en:"Thank you, registration received!"},done_p:{de:"Deinen Check-in-Code bekommst du am Anreisetag um 11:00 im Chat der Buchungsplattform.",en:"You will receive your check-in code at 11:00 on the arrival day in the booking platform chat."},
+already_h:{de:"Schon registriert",en:"Already registered"},already_p:{de:"Diese Buchung ist bereits registriert. Änderungen bitte kurz im Chat melden.",en:"This booking is already registered. For changes, just send us a message in the chat."},
+invalid_h:{de:"Link ungültig",en:"Invalid link"},invalid_p:{de:"Dieser Link ist nicht (mehr) gültig. Bitte melde dich kurz im Chat der Buchungsplattform.",en:"This link is not valid (anymore). Please contact us via the booking platform chat."},
+err:{de:"Da ist etwas schiefgelaufen. Bitte prüfe die rot markierten Felder.",en:"Something went wrong. Please check the fields marked in red."},
+need_sign:{de:"Bitte unterschreiben.",en:"Please sign."},
+guests_hint:{de:"Laut Buchung reist ihr zu {n}. Du füllst nur dieses eine Formular für deine Gruppe aus und ergänzt alle Mitreisenden unten.",en:"According to the booking you are {n} people. You fill in just this one form for your group and add all companions below."},
+offline:{de:"Verbindung fehlgeschlagen. Bitte später noch einmal versuchen.",en:"Connection failed. Please try again later."},
+beds_h:{de:"Betten",en:"Beds"},beds_intro:{de:"Ihr seid {n} Personen. Wähle pro Zimmer, wie viele Personen in welchem Bett schlafen. Wir bereiten die Betten genau so vor.",en:"You are {n} people. Choose for each room how many people sleep in which bed. We prepare the beds exactly this way."},
+bt_double:{de:"Doppelbett 180 cm",en:"Double bed 180 cm"},bt_sofa:{de:"Schlafsofa",en:"Sofa bed"},bt_couch:{de:"Schlafcouch",en:"Sofa couch"},bt_bunk:{de:"Stockbett",en:"Bunk bed"},bt_single:{de:"Einzelbett",en:"Single bed"},bt_singles:{de:"{k} Einzelbetten",en:"{k} single beds"},pn:{de:"{k} Personen",en:"{k} persons"},
+free:{de:"bleibt frei",en:"stays free"},p1:{de:"1 Person",en:"1 person"},p2:{de:"2 Personen",en:"2 persons"},
+crib:{de:"Babybett",en:"Baby cot"},crib_s:{de:"Reisebett",en:"Travel cot"},no:{de:"Nein",en:"No"},yes:{de:"Ja",en:"Yes"},
+places:{de:"Eingeteilt: {p} von {n} Personen",en:"Assigned: {p} of {n} persons"},
+beds_err:{de:"Bitte Schlafplätze für {n} Personen wählen (Kinder unter 2 Jahren schlafen im Babybett).",en:"Please select sleeping places for {n} persons (children under 2 sleep in the travel cot)."},
+beds_save:{de:"Betten speichern",en:"Save beds"},beds_saved_h:{de:"Betten gespeichert",en:"Beds saved"},beds_saved_p:{de:"Die Reinigung bereitet es so vor. Bis 24 Stunden vor der Anreise kannst du es hier jederzeit ändern.",en:"Our team will prepare it this way. You can change it here any time until 24 hours before arrival."},
+beds_change_h:{de:"Deine Betten",en:"Your beds"},beds_locked:{de:"Die Anreise ist in weniger als 24 Stunden. Für Änderungen schreib uns direkt im Chat, wir kümmern uns darum.",en:"Arrival is in less than 24 hours. For changes just message us in the chat and we take care of it."},
+day:{de:"Tag",en:"Day"},month:{de:"Monat",en:"Month"},year:{de:"Jahr",en:"Year"},
+months:{de:["Jänner","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"],en:["January","February","March","April","May","June","July","August","September","October","November","December"]}};
+const ROOM_EN={"Schlafzimmer":"Bedroom","Schlafzimmer 1":"Bedroom 1","Schlafzimmer 2":"Bedroom 2","Schlafzimmer 3":"Bedroom 3","Schlafzimmer 4":"Bedroom 4","Wohnzimmer":"Living room","Küche/Wohnbereich":"Kitchen/living area"};
+const CAPS={double:2,sofa:2,couch:1,bunk:2,single:1},BORDER=["double","bunk","single","couch","sofa"];
+let bedsTouched=false;
+function defaultCfg(beds,n){const c={};let left=Math.max(0,n);for(const t of BORDER)for(const b of beds.filter(x=>x.type===t)){const k=Math.min(CAPS[t],left);c[b.id]=k;left-=k}return c}
+function sleepersFromCards(){let n=0;document.querySelectorAll('.g').forEach(el=>{const bd=el.querySelector('[name=birth_date]').value;const age=bd?(Date.now()-Date.parse(bd))/31557600000:99;if(age>=2)n++});return n}
+function bedGroups(){const rooms=[];(D.beds||[]).forEach(b=>{let r=rooms.find(x=>x.name===b.room);if(!r){r={name:b.room,items:[]};rooms.push(r)}
+let it=b.type==='single'&&r.items.find(x=>x.type==='single');if(it){it.ids.push(b.id);it.cap++}else r.items.push({type:b.type,ids:[b.id],cap:CAPS[b.type]})});return rooms}
+function renderBeds(cfg,crib,n,editable){const box=$('bedrows');box.innerHTML='';
+bedGroups().forEach(r=>{let h='<div class="room"><b>'+esc(L==='de'?r.name:(ROOM_EN[r.name]||r.name))+'</b><div>';
+r.items.forEach(it=>{const v=it.ids.reduce((a,id)=>a+(cfg[id]||0),0);let opts='<option value="0">'+T.free+'</option>';for(let k=1;k<=it.cap;k++)opts+='<option value="'+k+'"'+(k===v?' selected':'')+'>'+(k===1?T.p1:T.pn.replace('{k}',k))+'</option>';
+const lbl=it.type==='single'&&it.ids.length>1?T.bt_singles.replace('{k}',it.ids.length):T['bt_'+it.type];
+h+='<div class="it"><span>'+lbl+'</span><select data-bed="'+it.ids.join(',')+'" '+(editable?'':'disabled')+'>'+opts+'</select></div>'});
+box.insertAdjacentHTML('beforeend',h+'</div></div>')});
+$('beds_intro').textContent=editable?T.beds_intro.replace('{n}',n):'';
+$('t_crib').textContent=T.crib;$('t_crib_s').textContent=T.crib_s;$('o_no').textContent=T.no;$('o_yes').textContent=T.yes;$('c_crib').value=crib?'1':'0';$('c_crib').disabled=!editable;$('bedsum').dataset.n=n;updatePlaces();
+box.querySelectorAll('select').forEach(sel=>sel.addEventListener('change',()=>{bedsTouched=true;updatePlaces()}));}
+function markBad(i){if(i.type==='hidden'){i.parentElement.querySelectorAll('select').forEach(x=>{if(!x.value)x.classList.add('bad')})}else i.classList.add('bad')}
+function readBeds(){const c={};document.querySelectorAll('[data-bed]').forEach(s=>{let left=Number(s.value);s.dataset.bed.split(',').forEach(id=>{const b=D.beds.find(x=>x.id===id),k=Math.min(CAPS[b.type],left);c[id]=k;left-=k})});return c}
+function updatePlaces(){const c=readBeds(),p=Object.values(c).reduce((a,b)=>a+b,0),n=Number($('bedsum').dataset.n||0);const ok=p>=Math.min(n,maxPlaces())&&p<=n+1;$('bedsum').textContent=(ok?'✓ ':'')+T.places.replace('{p}',p).replace('{n}',n);$('bedsum').className='m sum'+(ok?' okk':'');$('bedsum').style.color=ok?'':'var(--err)';return p}
+function maxPlaces(){return (D.beds||[]).reduce((a,b)=>a+CAPS[b.type],0)}
+function refreshBedDefaults(){if(!D||!D.beds||!D.beds.length)return;const n=sleepersFromCards();if(n>=maxPlaces()){renderBeds(defaultCfg(D.beds,n),($('c_crib').value==='1'),n,true);bedsTouched=false;$('bedcard').hidden=true;return}$('bedcard').hidden=false;if(bedsTouched)return;renderBeds(defaultCfg(D.beds,n),($('c_crib').value==='1'),n,true);bedsTouched=false;}
+const C="AF AX AL DZ AS AD AO AI AQ AG AR AM AW AU AT AZ BS BH BD BB BY BE BZ BJ BM BT BO BQ BA BW BV BR IO BN BG BF BI CV KH CM CA KY CF TD CL CN CX CC CO KM CG CD CK CR CI HR CU CW CY CZ DK DJ DM DO EC EG SV GQ ER EE SZ ET FK FO FJ FI FR GF PF TF GA GM GE DE GH GI GR GL GD GP GU GT GG GN GW GY HT HM VA HN HK HU IS IN ID IR IQ IE IM IL IT JM JP JE JO KZ KE KI KP KR KW KG LA LV LB LS LR LY LI LT LU MO MG MW MY MV ML MT MH MQ MR MU YT MX FM MD MC MN ME MS MA MZ MM NA NR NP NL NC NZ NI NE NG NU NF MK MP NO OM PK PW PS PA PG PY PE PH PN PL PT PR QA RE RO RU RW BL SH KN LC MF PM VC WS SM ST SA SN RS SC SL SG SX SK SI SB SO ZA GS SS ES LK SD SR SJ SE CH SY TW TJ TZ TH TL TG TK TO TT TN TR TM TC TV UG UA AE GB US UM UY UZ VU VE VN VG VI WF EH YE ZM ZW XK".split(" ");
+const q=new URLSearchParams(location.search), TOKEN=q.get('t')||'';
+function guessCountry(loc){if(!loc)return'';const part=loc.split(',').pop().trim().toLowerCase();if(!part)return'';
+try{const en=new Intl.DisplayNames(['en'],{type:'region'});for(const c of C){const nm=(en.of(c)||'').toLowerCase();if(nm===part||(part.length>3&&(nm.startsWith(part)||part.startsWith(nm))))return c;}}catch(e){}
+const alias={'usa':'US','united states':'US','uk':'GB','england':'GB','scotland':'GB','wales':'GB','deutschland':'DE','österreich':'AT','schweiz':'CH','czechia':'CZ','czech republic':'CZ','south korea':'KR','russia':'RU','türkiye':'TR','turkey':'TR','holland':'NL'};return alias[part]||'';}
+const LQ=q.get('lang')==='de'?'de':q.get('lang')==='en'?'en':null;let L=null, D=null, T={}, copts='', n=0;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function setLang(l){L=l;T=Object.fromEntries(Object.entries(S).map(([k,v])=>[k,v[l]]));document.documentElement.lang=l;document.title=T.title;
+$('h_title').textContent=T.title;$('h_intro').textContent=T.intro;$('l_de').className=l==='de'?'on':'';$('l_en').className=l==='en'?'on':'';
+let dn;try{dn=new Intl.DisplayNames([l],{type:'region'})}catch(e){}const cn=c=>{try{return dn?dn.of(c):c}catch(e){return c}};
+copts=C.map(c=>({c,n:cn(c)})).sort((a,b)=>a.n.localeCompare(b.n,l)).map(o=>'<option value="'+o.c+'">'+esc(o.n)+'</option>').join('');}
+function info(kind){$('loading').hidden=true;$('app').hidden=true;$('info').hidden=false;$('info_h').textContent=T[kind+'_h'];$('info_p').textContent=T[kind+'_p'];}
+function fmtDate(s){try{return new Date(s+'T00:00:00').toLocaleDateString(L==='de'?'de-AT':'en-GB',{weekday:'short',day:'numeric',month:'long',year:'numeric'})}catch(e){return s}}
+function dateField(name,req,kind){const y0=new Date().getFullYear(),yMin=kind==='birth'?1920:y0-25;let ys='';for(let y=y0;y>=yMin;y--)ys+='<option value="'+y+'">'+y+'</option>';
+let ms='';T.months.forEach((m,i)=>{ms+='<option value="'+String(i+1).padStart(2,'0')+'">'+m+'</option>'});let ds='';for(let d=1;d<=31;d++)ds+='<option value="'+String(d).padStart(2,'0')+'">'+d+'</option>';
+return '<div class="date"><select class="d-d"><option value="">'+T.day+'</option>'+ds+'</select><select class="d-m"><option value="">'+T.month+'</option>'+ms+'</select><select class="d-y"><option value="">'+T.year+'</option>'+ys+'</select><input type="hidden" name="'+name+'" '+(req==='req'?'required':req==='data'?'data-req="1"':'')+'></div>';}
+function wireDates(el){el.querySelectorAll('.date').forEach(w=>{const d=w.querySelector('.d-d'),m=w.querySelector('.d-m'),y=w.querySelector('.d-y'),h=w.querySelector('input');
+const upd=()=>{if(m.value&&y.value){const max=new Date(Number(y.value),Number(m.value),0).getDate();[...d.options].forEach(o=>{if(o.value)o.disabled=Number(o.value)>max});if(d.value&&Number(d.value)>max)d.value=''}
+const v=(d.value&&m.value&&y.value)?y.value+'-'+m.value+'-'+d.value:'';if(v!==h.value){h.value=v;h.dispatchEvent(new Event('change'))}};[d,m,y].forEach(x=>x.addEventListener('change',upd));});}
+function card(i){const main=i===1;n=Math.max(n,i);const SAAL=D.saalfelden;
+return '<div class="card g" data-i="'+i+'">'+(main?'':'<button type="button" class="link rm">'+T.remove+'</button>')+'<h2>'+(main?T.main:T.companion+' '+(i-1))+'</h2>'
++'<div class="row"><div><label>'+T.last+'</label><input name="last_name" required value="'+(main?esc(D.lastName):'')+'"></div><div><label>'+T.first+'</label><input name="first_name" required value="'+(main?esc(D.firstName):'')+'"></div></div>'
++'<div class="row"><div><label>'+T.birth+'</label>'+dateField('birth_date','req','birth')+'</div>'+(main?'<div><label>'+T.gender+'</label><select name="gender"><option value="">'+T.choose+'</option><option value="m">'+T.g_m+'</option><option value="f">'+T.g_f+'</option><option value="d">'+T.g_d+'</option><option value="x">'+T.g_x+'</option></select></div>':'')+'</div>'
++'<label>'+T.nat+'</label><select name="nationality" required><option value="">'+T.choose+'</option>'+copts+'</select>'
++(main?'<div style="margin-top:8px"><b style="font-size:13px;color:var(--m)">'+T.addr+'</b><label>'+T.street+'</label><input name="street" required><div class="row"><div><label>'+T.zip+'</label><input name="zip" required></div><div><label>'+T.city+'</label><input name="city" required></div></div><label>'+T.country+'</label><select name="country" required><option value="">'+T.choose+'</option>'+copts+'</select></div>':'')
++((main||SAAL)?'<label>'+(SAAL?T.email_card:T.email)+'</label><input name="email" type="email" '+(main?'required':'')+' value="'+(main?esc(D.email):'')+'">':'')
++(main?'<div class="doc" hidden><label style="margin-top:4px"><b>'+T.doc+'</b></label><small>'+T.doc_why+'</small><div class="row"><div><label>'+T.doc_type+'</label><select name="doc_type"><option value="passport">'+T.passport+'</option><option value="id_card">'+T.id_card+'</option></select></div><div><label>'+T.doc_no+'</label><input name="doc_number" data-req="1"></div></div><div class="row"><div><label>'+T.doc_issued+'</label>'+dateField('doc_issued','data','issued')+'</div><div><label>'+T.doc_auth+'</label><input name="doc_authority" data-req="1" placeholder="'+T.doc_auth_ph+'"></div></div></div>':'')
++'</div>';}
+function mainNat(){const m=document.querySelector('.g[data-i="1"] [name=nationality]');return m?m.value:''}
+function wire(el){wireDates(el);const nat=el.querySelector('[name=nationality]'),doc=el.querySelector('.doc');
+if(el.dataset.i!=='1'&&!nat.value&&mainNat()){nat.value=mainNat();nat.dataset.auto='1'}
+if(el.dataset.i==='1')nat.addEventListener('change',()=>{document.querySelectorAll('.g:not([data-i="1"]) [name=nationality]').forEach(o=>{if(!o.value||o.dataset.auto){o.value=nat.value;o.dataset.auto='1';o.dispatchEvent(new CustomEvent('change',{detail:{auto:true}}))}})});
+else nat.addEventListener('change',e=>{if(!(e.detail&&e.detail.auto))delete nat.dataset.auto});
+nat.addEventListener('change',()=>{if(doc)doc.hidden=!nat.value||nat.value==='AT';const co=el.querySelector('[name=country]');if(co&&!co.value)co.value=nat.value;});
+const bd=el.querySelector('[name=birth_date]');if(bd)bd.addEventListener('change',refreshBedDefaults);
+const rm=el.querySelector('.rm');if(rm)rm.onclick=()=>{el.remove();refreshBedDefaults()};}
+function render(){const G=$('guests');G.innerHTML='';n=0;
+$('h_stay').textContent=T.stay;$('s_prop').textContent=D.property;$('s_addr').textContent=D.address||'';$('s_dates').textContent=fmtDate(D.arrival)+' → '+fmtDate(D.departure);$('s_hint').textContent=T.guests_hint.replace('{n}',D.guestsTotal);
+$('add').textContent=T.add;$('t_privacy').textContent=T.consent_privacy;$('t_card').textContent=T.consent_card;$('t_card_s').textContent=T.consent_card_s;$('row_card').hidden=!D.saalfelden;$('t_sign').textContent=T.sign;$('clr').textContent=T.clear;$('go').textContent=T.submit;
+for(let i=1;i<=Math.max(1,D.guestsTotal);i++)G.insertAdjacentHTML('beforeend',card(i));G.querySelectorAll('.g').forEach(wire);
+const cc0=guessCountry(D.location);if(cc0){const m=G.querySelector('.g[data-i="1"]');['nationality','country'].forEach(k=>{const el=m.querySelector('[name='+k+']');if(el&&!el.value)el.value=cc0;});m.querySelector('[name=nationality]').dispatchEvent(new Event('change'));}
+if(D.beds&&D.beds.length){$('beds_h').textContent=T.beds_h;$('beds_intro').textContent=T.beds_intro;$('t_crib').textContent=T.crib;bedsTouched=false;renderBeds(D.defaultBeds||defaultCfg(D.beds,D.guestsTotal),false,D.guestsTotal,true);$('bedcard').hidden=D.guestsTotal>=maxPlaces();}
+$('loading').hidden=true;$('info').hidden=true;$('app').hidden=false;fit();}
+function renderBedsMode(){const ed=!!D.canEdit;$('h_stay').textContent=T.stay;$('s_prop').textContent=D.property;$('s_addr').textContent=D.address||'';$('s_dates').textContent=fmtDate(D.arrival)+' → '+fmtDate(D.departure);$('s_hint').textContent='';
+$('guests').innerHTML='';$('add').hidden=true;$('consentcard').hidden=true;$('bedcard').hidden=false;$('beds_h').textContent=T.beds_change_h;$('beds_intro').textContent=ed?T.beds_intro:'';$('t_crib').textContent=T.crib;
+renderBeds(D.bedConfig||{},D.crib,D.sleepers,ed);$('beds_locked').hidden=ed;$('beds_locked').textContent=T.beds_locked;$('go').textContent=T.beds_save;$('go').hidden=!ed;
+$('loading').hidden=true;$('info').hidden=true;$('app').hidden=false;}
+$('add').onclick=()=>{const G=$('guests');G.insertAdjacentHTML('beforeend',card(n+1));wire(G.lastElementChild);refreshBedDefaults()};
+$('l_de').onclick=()=>{setLang('de');if(D)(D.mode==='beds'?renderBedsMode():render())};$('l_en').onclick=()=>{setLang('en');if(D)(D.mode==='beds'?renderBedsMode():render())};
+// Unterschrift
+const cv=$('sig'),cx=cv.getContext('2d');let drawing=false,has=false;
+function fit(){const r=cv.getBoundingClientRect();if(!r.width)return;cv.width=r.width*2;cv.height=r.height*2;cx.setTransform(1,0,0,1,0,0);cx.scale(2,2);cx.lineWidth=2;cx.lineCap='round';cx.strokeStyle='#111';has=false;}
+const pos=e=>{const r=cv.getBoundingClientRect();const p=e.touches?e.touches[0]:e;return[p.clientX-r.left,p.clientY-r.top]};
+const st=e=>{drawing=true;has=true;const[x,y]=pos(e);cx.beginPath();cx.moveTo(x,y);e.preventDefault()};
+const mv=e=>{if(!drawing)return;const[x,y]=pos(e);cx.lineTo(x,y);cx.stroke();e.preventDefault()};const en=()=>{drawing=false};
+cv.addEventListener('mousedown',st);cv.addEventListener('mousemove',mv);window.addEventListener('mouseup',en);
+cv.addEventListener('touchstart',st,{passive:false});cv.addEventListener('touchmove',mv,{passive:false});cv.addEventListener('touchend',en);
+$('clr').onclick=()=>{cx.clearRect(0,0,cv.width,cv.height);has=false};
+// Absenden
+$('f').onsubmit=async e=>{e.preventDefault();const err=$('err');err.hidden=true;let bad=false;document.querySelectorAll('.bad').forEach(x=>x.classList.remove('bad'));
+if(D.mode==='beds'){const p=updatePlaces();if(!(p>=Math.min(D.sleepers,maxPlaces())&&p<=D.sleepers+1)){err.textContent=T.beds_err.replace('{n}',D.sleepers);err.hidden=false;return}
+const go=$('go');go.disabled=true;go.textContent=T.sending;
+try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:TOKEN,lang:L,action:'beds',beds:readBeds(),crib:($('c_crib').value==='1')})});
+const j=await r.json().catch(()=>({}));if(!r.ok||!j.ok)throw new Error(j.error||r.status);$('app').hidden=true;$('info').hidden=false;$('info_h').textContent=T.beds_saved_h;$('info_p').textContent=T.beds_saved_p;window.scrollTo(0,0);}
+catch(ex){err.textContent=T.err+' ('+ex.message+')';err.hidden=false;go.disabled=false;go.textContent=T.beds_save}return;}
+const guests=[...document.querySelectorAll('.g')].map((el,idx)=>{const o={position:idx+1};el.querySelectorAll('input,select').forEach(i=>{o[i.name]=i.value.trim()});
+const dEl=el.querySelector('.doc');const dv=!!dEl&&!dEl.hidden;el.querySelectorAll('[required]').forEach(i=>{if(!i.value.trim()){markBad(i);bad=true}});
+if(dv)el.querySelectorAll('[data-req]').forEach(i=>{if(!i.value.trim()){markBad(i);bad=true}});
+if(!dv)['doc_type','doc_number','doc_issued','doc_authority'].forEach(k=>o[k]='');return o;});
+const cc=$('c_card');
+if(!has){bad=true;err.textContent=T.need_sign;err.hidden=false}
+let bedsOut=null,cribOut=false;if(D.beds&&D.beds.length){const n=sleepersFromCards();$('bedsum').dataset.n=n;const p=updatePlaces();bedsOut=readBeds();cribOut=($('c_crib').value==='1');if(!(p>=Math.min(n,maxPlaces())&&p<=n+1)){bad=true;err.textContent=T.beds_err.replace('{n}',n);err.hidden=false;$('bedcard').scrollIntoView({behavior:'smooth',block:'center'})}}
+if(bad){if(err.hidden){err.textContent=T.err;err.hidden=false}const b=document.querySelector('.bad');if(b)b.scrollIntoView({behavior:'smooth',block:'center'});return}
+const go=$('go');go.disabled=true;go.textContent=T.sending;
+try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:TOKEN,lang:L,guests,beds:bedsOut,crib:cribOut,consents:{privacy:true,card:!!(D.saalfelden&&cc.checked)},signature:cv.toDataURL('image/png')})});
+const j=await r.json().catch(()=>({}));if(r.status===409){info('already');return}if(!r.ok||!j.ok)throw new Error(j.error||r.status);
+$('app').hidden=true;info('done');window.scrollTo(0,0);}
+catch(ex){err.textContent=T.err+' ('+ex.message+')';err.hidden=false;go.disabled=false;go.textContent=T.submit}};
+// Laden
+(async()=>{setLang(LQ||((navigator.language||'en').toLowerCase().startsWith('de')?'de':'en'));
+if(!TOKEN){info('invalid');return}
+try{const r=await fetch(API+'?t='+encodeURIComponent(TOKEN));const j=await r.json();
+if(!j.ok){if(!LQ&&j.lang)setLang(j.lang);info(j.kind==='already'?'already':'invalid');return}
+D=j;if(!LQ&&j.lang)setLang(j.lang);if(j.mode==='beds')renderBedsMode();else render();}
+catch(e){$('loading').innerHTML='<p>'+T.offline+'</p>'}})();
+</script></body></html>
