@@ -75,7 +75,7 @@ beds_save:{de:"Betten speichern",en:"Save beds"},beds_saved_h:{de:"Betten gespei
 beds_change_h:{de:"Deine Betten",en:"Your beds"},beds_locked:{de:"Die Anreise ist in weniger als 24 Stunden. Für Änderungen schreib uns direkt im Chat, wir kümmern uns darum.",en:"Arrival is in less than 24 hours. For changes just message us in the chat and we take care of it."},
 day:{de:"Tag",en:"Day"},month:{de:"Monat",en:"Month"},year:{de:"Jahr",en:"Year"},
 months:{de:["Jänner","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"],en:["January","February","March","April","May","June","July","August","September","October","November","December"]}};
-const ROOM_EN={"Schlafzimmer":"Bedroom","Schlafzimmer 1":"Bedroom 1","Schlafzimmer 2":"Bedroom 2","Schlafzimmer 3":"Bedroom 3","Schlafzimmer 4":"Bedroom 4","Wohnzimmer":"Living room","Küche/Wohnbereich":"Kitchen/living area"};
+const ROOM_EN={"Schlafzimmer":"Bedroom","Schlafzimmer 1":"Bedroom 1","Schlafzimmer 2":"Bedroom 2","Schlafzimmer 3":"Bedroom 3","Schlafzimmer 4":"Bedroom 4","Wohnzimmer":"Living room","Küche/Wohnbereich":"Kitchen/living area","Wohnbereich":"Living area"};
 const CAPS={double:2,sofa:2,couch:1,bunk:2,single:1},BORDER=["double","bunk","single","couch","sofa"];
 let bedsTouched=false;
 function defaultCfg(beds,n){const c={};let left=Math.max(0,n);for(const t of BORDER)for(const b of beds.filter(x=>x.type===t)){const k=Math.min(CAPS[t],left);c[b.id]=k;left-=k}return c}
