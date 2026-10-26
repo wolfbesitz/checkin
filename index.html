@@ -31,8 +31,8 @@ canvas{width:100%;height:160px;border:1px solid var(--bd);border-radius:8px;back
 <div class="card" id="bedcard" hidden><h2 id="beds_h"></h2><p class="m" id="beds_intro"></p><div id="bedrows"></div><div class="room"><b id="t_crib"></b><div><div class="it"><span id="t_crib_s"></span><select id="c_crib"><option value="0" id="o_no"></option><option value="1" id="o_yes"></option></select></div></div></div><p class="m" id="bedsum" style="margin:10px 0 0"></p><p class="m" id="beds_locked" hidden></p></div>
 <div class="card" id="consentcard">
 <p class="m" id="t_privacy" style="font-size:13px"></p>
-<label class="chk" id="row_card" hidden><input type="checkbox" id="c_card" checked> <span><span id="t_card"></span><br><small style="color:var(--m)" id="t_card_s"></small></span></label>
-<label id="t_sign"></label><canvas id="sig"></canvas><button type="button" class="link" id="clr"></button>
+<label class="chk" id="row_card" hidden><input type="checkbox" id="c_card"> <span><span id="t_card"></span><br><small style="color:var(--m)" id="t_card_s"></small></span></label>
+<div id="signbox"><label id="t_sign"></label><canvas id="sig"></canvas><button type="button" class="link" id="clr"></button></div>
 </div>
 <div class="err" id="err" hidden></div>
 <button class="primary" id="go"></button>
@@ -71,7 +71,7 @@ free:{de:"bleibt frei",en:"stays free"},p1:{de:"1 Person",en:"1 person"},p2:{de:
 crib:{de:"Babybett",en:"Baby cot"},crib_s:{de:"Reisebett",en:"Travel cot"},no:{de:"Nein",en:"No"},yes:{de:"Ja",en:"Yes"},
 places:{de:"Eingeteilt: {p} von {n} Personen",en:"Assigned: {p} of {n} persons"},
 beds_err:{de:"Bitte Schlafplätze für {n} Personen wählen (Kinder unter 2 Jahren schlafen im Babybett).",en:"Please select sleeping places for {n} persons (children under 2 sleep in the travel cot)."},
-beds_save:{de:"Betten speichern",en:"Save beds"},beds_saved_h:{de:"Betten gespeichert",en:"Beds saved"},beds_saved_p:{de:"Die Reinigung bereitet es so vor. Bis 24 Stunden vor der Anreise kannst du es hier jederzeit ändern.",en:"Our team will prepare it this way. You can change it here any time until 24 hours before arrival."},
+beds_save:{de:"Änderungen speichern",en:"Save changes"},beds_saved_h:{de:"Gespeichert",en:"Saved"},beds_saved_p:{de:"Wir bereiten alles so vor. Die Betten kannst du hier bis 24 Stunden vor der Anreise ändern.",en:"We prepare everything this way. You can change the beds here until 24 hours before arrival."},
 beds_change_h:{de:"Deine Betten",en:"Your beds"},beds_locked:{de:"Die Anreise ist in weniger als 24 Stunden. Für Änderungen schreib uns direkt im Chat, wir kümmern uns darum.",en:"Arrival is in less than 24 hours. For changes just message us in the chat and we take care of it."},
 day:{de:"Tag",en:"Day"},month:{de:"Monat",en:"Month"},year:{de:"Jahr",en:"Year"},
 months:{de:["Jänner","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"],en:["January","February","March","April","May","June","July","August","September","October","November","December"]}};
@@ -141,8 +141,8 @@ const cc0=guessCountry(D.location);if(cc0){const m=G.querySelector('.g[data-i="1
 if(D.beds&&D.beds.length){$('beds_h').textContent=T.beds_h;$('beds_intro').textContent=T.beds_intro;$('t_crib').textContent=T.crib;bedsTouched=false;renderBeds(D.defaultBeds||defaultCfg(D.beds,D.guestsTotal),false,D.guestsTotal,true);$('bedcard').hidden=D.guestsTotal>=maxPlaces();}
 $('loading').hidden=true;$('info').hidden=true;$('app').hidden=false;fit();}
 function renderBedsMode(){const ed=!!D.canEdit;$('h_stay').textContent=T.stay;$('s_prop').textContent=D.property;$('s_addr').textContent=D.address||'';$('s_dates').textContent=fmtDate(D.arrival)+' → '+fmtDate(D.departure);$('s_hint').textContent='';
-$('guests').innerHTML='';$('add').hidden=true;$('consentcard').hidden=true;$('bedcard').hidden=false;$('beds_h').textContent=T.beds_change_h;$('beds_intro').textContent=ed?T.beds_intro:'';$('t_crib').textContent=T.crib;
-renderBeds(D.bedConfig||{},D.crib,D.sleepers,ed);$('beds_locked').hidden=ed;$('beds_locked').textContent=T.beds_locked;$('go').textContent=T.beds_save;$('go').hidden=!ed;
+$('guests').innerHTML='';$('add').hidden=true;const ce=!!D.cardEdit;$('consentcard').hidden=!ce;$('t_privacy').hidden=true;$('signbox').hidden=true;$('row_card').hidden=!ce;$('t_card').textContent=T.consent_card;$('t_card_s').textContent=T.consent_card_s;$('c_card').checked=!!D.card;$('bedcard').hidden=false;$('beds_h').textContent=T.beds_change_h;$('beds_intro').textContent=ed?T.beds_intro:'';$('t_crib').textContent=T.crib;
+renderBeds(D.bedConfig||{},D.crib,D.sleepers,ed);$('beds_locked').hidden=ed;$('beds_locked').textContent=T.beds_locked;$('go').textContent=T.beds_save;$('go').hidden=!(ed||ce);
 $('loading').hidden=true;$('info').hidden=true;$('app').hidden=false;}
 $('add').onclick=()=>{const G=$('guests');G.insertAdjacentHTML('beforeend',card(n+1));wire(G.lastElementChild);refreshBedDefaults()};
 $('l_de').onclick=()=>{setLang('de');if(D)(D.mode==='beds'?renderBedsMode():render())};$('l_en').onclick=()=>{setLang('en');if(D)(D.mode==='beds'?renderBedsMode():render())};
@@ -157,9 +157,9 @@ cv.addEventListener('touchstart',st,{passive:false});cv.addEventListener('touchm
 $('clr').onclick=()=>{cx.clearRect(0,0,cv.width,cv.height);has=false};
 // Absenden
 $('f').onsubmit=async e=>{e.preventDefault();const err=$('err');err.hidden=true;let bad=false;document.querySelectorAll('.bad').forEach(x=>x.classList.remove('bad'));
-if(D.mode==='beds'){const p=updatePlaces();if(!(p>=Math.min(D.sleepers,maxPlaces())&&p<=D.sleepers+1)){err.textContent=T.beds_err.replace('{n}',D.sleepers);err.hidden=false;return}
+if(D.mode==='beds'){const p=updatePlaces();if(D.canEdit&&!(p>=Math.min(D.sleepers,maxPlaces())&&p<=D.sleepers+1)){err.textContent=T.beds_err.replace('{n}',D.sleepers);err.hidden=false;return}
 const go=$('go');go.disabled=true;go.textContent=T.sending;
-try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:TOKEN,lang:L,action:'beds',beds:readBeds(),crib:($('c_crib').value==='1')})});
+try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:TOKEN,lang:L,action:'beds',beds:D.canEdit?readBeds():null,crib:($('c_crib').value==='1'),card:D.cardEdit?$('c_card').checked:undefined})});
 const j=await r.json().catch(()=>({}));if(!r.ok||!j.ok)throw new Error(j.error||r.status);$('app').hidden=true;$('info').hidden=false;$('info_h').textContent=T.beds_saved_h;$('info_p').textContent=T.beds_saved_p;window.scrollTo(0,0);}
 catch(ex){err.textContent=T.err+' ('+ex.message+')';err.hidden=false;go.disabled=false;go.textContent=T.beds_save}return;}
 const guests=[...document.querySelectorAll('.g')].map((el,idx)=>{const o={position:idx+1};el.querySelectorAll('input,select').forEach(i=>{o[i.name]=i.value.trim()});
