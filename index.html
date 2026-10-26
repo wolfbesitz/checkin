@@ -16,7 +16,7 @@ canvas{width:100%;height:160px;border:1px solid var(--bd);border-radius:8px;back
 .chk{display:flex;gap:10px;align-items:flex-start;margin:10px 0;font-size:14px}.chk input{width:20px;height:20px;margin-top:2px}
 .err{color:var(--err);font-size:14px;margin:8px 0}.ok{text-align:center;padding:40px 10px}.ok h1{color:var(--acc)}
 .rm{float:right}[hidden]{display:none!important}
-.room{display:grid;grid-template-columns:110px 1fr;gap:12px;padding:12px 0;border-top:1px solid var(--bd)}.room:first-child{border-top:none}.room>b{font-size:15px;padding-top:10px}.it{display:grid;grid-template-columns:1fr 140px;gap:8px;align-items:center;margin:0 0 8px}.it:last-child{margin:0}.it span{font-size:14px}.sum{font-weight:600}.sum.okk{color:var(--acc)}@media(max-width:420px){.room{grid-template-columns:104px 1fr;gap:8px}.room>b{font-size:14px;padding-top:0;overflow-wrap:anywhere}.it{grid-template-columns:1fr}.it span{color:var(--m);font-size:13px}}
+.room{display:grid;grid-template-columns:110px 1fr;gap:12px;padding:12px 0;border-top:1px solid var(--bd)}.room:first-child{border-top:none}.room>b{font-size:15px;padding-top:10px}.it{display:grid;grid-template-columns:1fr 140px;gap:8px;align-items:center;margin:0 0 8px}.it:last-child{margin:0}.it span{font-size:14px}.sum{font-weight:600}.rh{display:block;font-weight:400;font-size:12px;color:var(--m);margin-top:2px}.sum.okk{color:var(--acc)}@media(max-width:420px){.room{grid-template-columns:104px 1fr;gap:8px}.room>b{font-size:14px;padding-top:0;overflow-wrap:anywhere}.it{grid-template-columns:1fr}.it span{color:var(--m);font-size:13px}}
 .row>div{min-width:0}input,select{min-width:0;max-width:100%}.date{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) minmax(0,1.1fr);gap:6px}.date select{padding:11px 4px;text-overflow:ellipsis}
 </style></head><body><div class="wrap">
 <div class="hdr"><h1 id="h_title"></h1><div class="lang"><a id="l_de">DE</a><a id="l_en">EN</a></div></div>
@@ -80,10 +80,10 @@ const CAPS={double:2,sofa:2,couch:1,bunk:2,single:1},BORDER=["double","bunk","si
 let bedsTouched=false;
 function defaultCfg(beds,n){const c={};let left=Math.max(0,n);for(const t of BORDER)for(const b of beds.filter(x=>x.type===t)){const k=Math.min(CAPS[t],left);c[b.id]=k;left-=k}return c}
 function sleepersFromCards(){let n=0;document.querySelectorAll('.g').forEach(el=>{const bd=el.querySelector('[name=birth_date]').value;const age=bd?(Date.now()-Date.parse(bd))/31557600000:99;if(age>=2)n++});return n}
-function bedGroups(){const rooms=[];(D.beds||[]).forEach(b=>{let r=rooms.find(x=>x.name===b.room);if(!r){r={name:b.room,items:[]};rooms.push(r)}
+function bedGroups(){const rooms=[];(D.beds||[]).forEach(b=>{let r=rooms.find(x=>x.name===b.room);if(!r){r={name:b.room,items:[]};rooms.push(r)}if(b.hint)r.hint=b.hint;
 let it=b.type==='single'&&r.items.find(x=>x.type==='single');if(it){it.ids.push(b.id);it.cap++}else r.items.push({type:b.type,ids:[b.id],cap:CAPS[b.type]})});return rooms}
 function renderBeds(cfg,crib,n,editable){const box=$('bedrows');box.innerHTML='';
-bedGroups().forEach(r=>{let h='<div class="room"><b>'+esc(L==='de'?r.name:(ROOM_EN[r.name]||r.name))+'</b><div>';
+bedGroups().forEach(r=>{let h='<div class="room"><b>'+esc(L==='de'?r.name:(ROOM_EN[r.name]||r.name))+(r.hint?'<small class="rh">'+esc(r.hint[L]||r.hint.de)+'</small>':'')+'</b><div>';
 r.items.forEach(it=>{const v=it.ids.reduce((a,id)=>a+(cfg[id]||0),0);let opts='<option value="0">'+T.free+'</option>';for(let k=1;k<=it.cap;k++)opts+='<option value="'+k+'"'+(k===v?' selected':'')+'>'+(k===1?T.p1:T.pn.replace('{k}',k))+'</option>';
 const lbl=it.type==='single'&&it.ids.length>1?T.bt_singles.replace('{k}',it.ids.length):T['bt_'+it.type];
 h+='<div class="it"><span>'+lbl+'</span><select data-bed="'+it.ids.join(',')+'" '+(editable?'':'disabled')+'>'+opts+'</select></div>'});
