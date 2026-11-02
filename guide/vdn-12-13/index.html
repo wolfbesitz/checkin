@@ -204,10 +204,10 @@ window.initGuideMap=async function(){var el=document.getElementById('map');
  new AdvancedMarkerElement({map:gmap,position:HOME,content:home,title:'Apartment'});
  var b=new google.maps.LatLngBounds();b.extend(HOME);
  PLACES.forEach(function(p){var c=CATS[p.cat];var pin=new PinElement({background:c.color,borderColor:'#fff',glyphColor:'#fff'});
-  var m=new AdvancedMarkerElement({map:active[p.cat]?gmap:null,position:{lat:p.lat,lng:p.lng},content:pin,title:p.name});
+  var m=new AdvancedMarkerElement({map:active[p.cat]?gmap:null,position:{lat:p.lat,lng:p.lng},content:pin,title:p.name,gmpClickable:true});
   m.addEventListener('gmp-click',function(){iw.setContent('<div class="iw"><img src="img/'+p.img+'" alt=""><b>'+p.name+'</b><br>'+L(p.text)+'<br><a href="'+gmapsLink(p)+'" target="_blank" rel="noopener">Google Maps ↗</a></div>');iw.open({anchor:m,map:gmap});});
   markers.push({marker:m,cat:p.cat});b.extend({lat:p.lat,lng:p.lng});});
- gmap.fitBounds(b,40);};
+ gmap.fitBounds(b,40);document.getElementById('mapnote').style.display='none';};
 window.renderPlaces();
 </script>
 </body>
