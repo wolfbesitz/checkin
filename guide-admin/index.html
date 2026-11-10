@@ -260,8 +260,9 @@ function toast(msg, ms = 3500) { const t = $("#toast"); t.textContent = msg; t.h
 let KEY = lsGet("guide_admin_key") || "";
 {
   const m = /(?:^#|&)k=([^&]+)/.exec(location.hash);
-  if (m) { KEY = decodeURIComponent(m[1]); lsSet("guide_admin_key", KEY); history.replaceState(null, "", location.pathname + location.search); }
+  if (m) { KEY = decodeURIComponent(m[1]); lsSet("guide_admin_key", KEY); }   // Schlüssel bleibt im Link (Lesezeichen/Neu laden funktionieren auch ohne Browser-Speicher)
 }
+window.addEventListener("hashchange", () => location.reload());
 let NAME = lsGet("guide_admin_name") || "";
 
 // ---------- API (echt oder Mock) ----------
@@ -271,7 +272,7 @@ async function api(action, payload = {}) {
   try { r = await fetch(API, { method: "POST", headers: { "content-type": "application/json", "x-guide-key": KEY }, body: JSON.stringify({ action, ...payload }) }); }
   catch { throw new Error("Keine Verbindung. Bitte später noch einmal versuchen."); }
   const j = await r.json().catch(() => ({}));
-  if (r.status === 401) throw new Error("Der Link ist nicht gültig. Bitte frag nach einem neuen Link.");
+  if (r.status === 401) { try { localStorage.removeItem("guide_admin_key"); } catch {} throw new Error("Der Link ist nicht gültig. Bitte frag nach einem neuen Link."); }
   if (!r.ok) throw new Error(j.error || "Fehler " + r.status);
   return j;
 }
@@ -582,7 +583,17 @@ $("#btnDrafts").addEventListener("click", draftsDialog);
 $("#btnPublish").addEventListener("click", publish);
 
 (async function init() {
-  if (!KEY && !MOCK) { $("#main").innerHTML = `<div class="banner err" style="margin:0">Kein Zugangslink. Bitte den Link mit dem Schlüssel öffnen.</div>`; return; }
+  if (!KEY && !MOCK) {
+    $("#main").innerHTML = `<div class="banner err" style="margin:0 0 14px">Der Zugangsschlüssel fehlt.</div>
+      <label class="f" for="keyin">Füge hier den ganzen Link aus WhatsApp ein:</label><input class="t" id="keyin" autocomplete="off" placeholder="https://wolfbesitz.github.io/checkin/guide-admin/#k=…">
+      <div class="row" style="margin-top:12px"><button class="btn primary" id="keyok" type="button">Öffnen</button></div>`;
+    $("#keyok").addEventListener("click", () => {
+      const v = $("#keyin").value.trim(); const k = (/k=([0-9a-f]{16,})/i.exec(v) || /^([0-9a-f]{16,})$/i.exec(v) || [])[1];
+      if (!k) return toast("Das ist nicht der richtige Link.");
+      lsSet("guide_admin_key", k); location.hash = "k=" + k;
+    });
+    return;
+  }
   try {
     await load();
     renderList();
