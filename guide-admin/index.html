@@ -59,7 +59,27 @@ input.t:focus,.rich:focus-within{outline:2px solid var(--gold);outline-offset:1p
 .ed p{margin:0 0 10px}.ed ul,.ed ol{margin:0 0 10px;padding-left:22px}.ed li{margin:0 0 5px}.ed li p{margin:0}
 .ed a{color:var(--gold-dark);text-decoration:underline;text-underline-offset:2px;cursor:text}
 .ed u{text-decoration:underline}
-.ph{display:inline-block;background:#eef2f7;border:1px solid #c9d4e3;color:#33507a;border-radius:6px;padding:0 6px;font:500 13px/1.5 ui-monospace,Menlo,monospace;margin:0 1px;user-select:all}
+.ph{display:inline-block;background:#eef2f7;border:1px solid #c9d4e3;color:#33507a;border-radius:6px;padding:0 6px;font:500 13px/1.5 ui-monospace,Menlo,monospace;margin:0 1px;user-select:all;cursor:pointer}
+.ph:hover{border-color:#33507a}.ph.fixed{cursor:default;background:#f3f1ec;border-color:#ddd5c4;color:#6b6356}
+.phrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0 0;font-size:13px;color:var(--muted)}
+.phrow button{border:1px solid #c9d4e3;background:#eef2f7;color:#33507a;border-radius:999px;padding:3px 10px;font:500 13px Inter,sans-serif;cursor:pointer}
+.phrow button:hover{border-color:#33507a}
+body.wide main,body.wide .bar{max-width:1240px}
+.pair{display:grid;grid-template-columns:minmax(0,1fr);gap:4px 24px;align-items:start}
+@media(min-width:1000px){.pair{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.pv-wrap{position:sticky;top:110px;margin-top:18px}}
+.pv-wrap .lbl{font-weight:600;font-size:14px;margin:18px 0 6px;color:var(--muted)}
+@media(min-width:1000px){.pv-wrap .lbl{margin-top:0}}
+.pv{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;max-height:calc(100vh - 160px);overflow-y:auto}
+.pv .sum{padding:14px 16px;font:600 19px/1.25 "Cormorant Garamond",Georgia,serif;display:flex;gap:10px;align-items:center}
+.pv .sum::after{content:"–";margin-left:auto;color:var(--gold-dark);font:400 24px/1 Inter,sans-serif}
+.pv .hero{padding:16px;text-align:center}.pv .hero h3{font:600 26px/1.2 "Cormorant Garamond",Georgia,serif;margin:0}.pv .rule{width:64px;height:2px;background:var(--gold);margin:12px auto}
+.pv .body{padding:0 16px 16px}.pv .hero .body{padding:0;text-align:left}
+.pv p{margin:0 0 10px}.pv ul,.pv ol{margin:0 0 10px;padding-left:22px}.pv li{margin:0 0 5px}
+.pv a{color:var(--gold-dark);text-decoration:underline;text-underline-offset:2px;word-break:break-word}
+.pv .imgs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(160px,100%),1fr));gap:10px;margin:8px 0 10px}.pv .imgs.pair2{grid-template-columns:1fr 1fr;align-items:center}
+.pv .imgs img{width:100%;height:auto;display:block;border-radius:8px;border:1px solid var(--gold2);background:#fff}
+.pv mark{background:#fff1c7;color:inherit;border-radius:3px;padding:0 1px}
+.pv .empty{color:var(--muted);font-style:italic}
 .imgrow{display:flex;gap:8px;margin:0 0 10px;padding:6px;border:1px dashed var(--gold2);border-radius:8px;background:#fcfaf4;align-items:center;flex-wrap:wrap}
 .imgrow img{height:70px;max-width:45%;width:auto;border-radius:6px;border:1px solid var(--gold2);object-fit:cover;background:#eee}
 .imgrow .cap{font-size:12px;color:var(--muted);flex:1 1 100%}
@@ -228,7 +248,7 @@ function makeExtensions({ Extension, Node, StarterKit, Underline, Link }, unitUr
     name: "placeholder", group: "inline", inline: true, atom: true, selectable: true,
     addAttributes() { return { name: { default: "" } }; },
     parseHTML() { return [{ tag: "span[data-ph]", getAttrs: (el) => ({ name: el.getAttribute("data-ph") }) }]; },
-    renderHTML({ node }) { return ["span", { class: "ph", "data-ph": node.attrs.name, contenteditable: "false" }, "{" + node.attrs.name + "}"]; },
+    renderHTML({ node }) { return ["span", { class: "ph", "data-ph": node.attrs.name, contenteditable: "false", title: "Antippen zum Bearbeiten" }, "{" + node.attrs.name + "} ✎"]; },
   });
   const ImageRow = Node.create({
     name: "imageRow", group: "block", atom: true, selectable: true,
@@ -247,6 +267,60 @@ function makeExtensions({ Extension, Node, StarterKit, Underline, Link }, unitUr
   ];
 }
 // END EXT
+
+// BEGIN RENDER
+// Vorschau: Nachbildung von build_guide.py fill → md → inline (+ Adress-Links). Bilder kommen von der veröffentlichten Seite.
+const escA = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const STREET_RE = /(?<![\p{L}\p{N}_\/])([A-ZÄÖÜ][\p{L}\p{N}_-]*(?:[Gg]asse|[Ss]tra(?:ß|ss)e|[Pp]latz|[Gg]ürtel|[Ww]eg|[Rr]ing|[Kk]ai|[Zz]eile|[Mm]arkt))(\s+\d+[a-zA-Z]?(?:[-–\/]\d+[a-zA-Z]?)?)(?!\d)/gu;
+function autolinkAddresses(t, city) {
+  const parts = t.split(/(<a [^>]*>.*?<\/a>)/);
+  return parts.map((seg, i) => {
+    if (seg.startsWith("<a ")) return seg;
+    const nxt = parts[i + 1] || ""; const mapsNext = nxt.includes("google.com/maps") || nxt.includes("maps.app.goo.gl");
+    return seg.replace(STREET_RE, (m, a, b, off) => {
+      if (mapsNext && /^[^.!?\n]{0,90}$/.test(seg.slice(off + m.length))) return m;
+      return `<a href="https://www.google.com/maps/search/?api=1&amp;query=${encodeURIComponent(a + b + ", " + city)}" target="_blank" rel="noopener">${m}</a>`;
+    });
+  }).join("");
+}
+function rInline(t, city) {
+  t = escA(t);
+  t = t.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  t = t.replace(/(?<![\p{L}\p{N}_*])\*(?=[^\s*])(.+?)(?<=[^\s*])\*(?![\p{L}\p{N}_*])/gu, "<em>$1</em>");
+  t = t.replace(/\+\+(?=\S)(.+?)(?<=\S)\+\+/g, "<u>$1</u>");
+  t = t.replace(/\[([^\]]+)\]\((#[a-z0-9-]+)\)/g, '<a href="$2">$1</a>');
+  t = t.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  return autolinkAddresses(t, city).replace(/\u0001/g, "<mark>").replace(/\u0002/g, "</mark>");
+}
+function rMd(text, imgBase, city) {
+  const out = []; let buf = [], kind = null;
+  const flush = () => {
+    if (!buf.length) return;
+    out.push(kind === "p" ? "<p>" + buf.map((l) => rInline(l, city)).join("<br>") + "</p>" : `<${kind}>` + buf.map((l) => `<li>${rInline(l, city)}</li>`).join("") + `</${kind}>`);
+    buf = []; kind = null;
+  };
+  for (const line of String(text || "").trim().split("\n")) {
+    let s = line.trim();
+    if (!s) { flush(); continue; }
+    if (IMG_LINE.test(s.replace(/[\u0001\u0002]/g, ""))) {
+      flush(); const ims = [...s.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)].map((m) => m[1]);
+      out.push(`<div class="imgs${ims.length === 2 ? " pair2" : ""}">${ims.map((i) => `<img loading="lazy" alt="" src="${escA(imgBase + "img/" + i.split("/").pop())}">`).join("")}</div>`); continue;
+    }
+    let k = "p", m;
+    if (s.startsWith("- ")) { k = "ul"; s = s.slice(2); } else if ((m = /^\d+\. /.exec(s))) { k = "ol"; s = s.slice(m[0].length); }
+    if (k !== kind) { flush(); kind = k; }
+    buf.push(s);
+  }
+  flush(); return out.join("\n");
+}
+// Platzhalter füllen; mark = Name des Bausteins, der hervorgehoben wird (nur einzeilige Werte)
+function rFill(text, vals, mark) {
+  return String(text || "").replace(/\{(\w+)\}/g, (m, n) => {
+    if (!(n in vals)) return m;
+    const v = String(vals[n]); return n === mark && !v.includes("\n") && v ? "\u0001" + v + "\u0002" : v;
+  });
+}
+// END RENDER
 
 // ---------- Hilfen ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -310,7 +384,7 @@ const unitObj = () => S.editor.units.find((u) => u.slug === S.unit) || S.editor.
 const layerLabel = (l) => (S.editor.layers[l] ? S.editor.layers[l].label : l);
 const layerN = (l) => (S.editor.layers[l] ? S.editor.layers[l].units.length : 1);
 const nTxt = (l) => layerN(l) === 1 ? "1 Einheit" : layerN(l) + " Einheiten";
-const kindTxt = { edit: "Änderung", new: "Neue Frage", welcome: "Begrüßung" };
+const kindTxt = { edit: "Änderung", new: "Neue Frage", welcome: "Begrüßung", var: "Baustein" };
 
 function bestDraft(kind, sid) {            // spezifischste Ebene der Einheit gewinnt
   const u = unitObj(); let best = null, bi = -1;
@@ -395,9 +469,10 @@ function historyHtml() {
 }
 
 // ---------- Editor-Komponente ----------
-function makeRich(host, md, { onInput, onBlur }) {
+function makeRich(host, md, { onInput, onBlur, onPh }) {
   host.innerHTML = `<div class="tb"></div><div class="ed"></div>`;
   const tb = host.firstChild, el = host.lastChild;
+  el.addEventListener("click", (e) => { const ph = e.target.closest(".ph"); if (ph && onPh) onPh(ph.dataset.ph); });
   const ed = new Editor({
     element: el, extensions: makeExtensions({ Extension, Node, StarterKit, Underline, Link }, () => unitObj().url),
     content: mdToDoc(md),
@@ -446,25 +521,133 @@ function openEdit(mode, ctx) {
   const gtxt = S.edit.group ? (S.editor.groups.find((g) => g.id === S.edit.group) || {}).de || S.edit.group : "";
   $("#main").innerHTML = `<button class="back" data-act="back">← Zurück zur Liste</button>
    <h2 class="serif" style="font-size:30px;margin:6px 0 0">${esc(label)}</h2>${gtxt ? `<p class="hint">Gruppe: ${esc(gtxt)}</p>` : ""}
-   <label class="f" for="tde">Titel (Deutsch)</label><input class="t" id="tde" maxlength="300" value="${esc(cur.title.de)}">
-   <label class="f">Text (Deutsch)</label><div class="rich" id="rde"></div>
+   <div class="pair"><div>
+    <label class="f" for="tde">Titel (Deutsch)</label><input class="t" id="tde" maxlength="300" value="${esc(cur.title.de)}">
+    <label class="f">Text (Deutsch)</label><div class="rich" id="rde"></div><div class="phrow" id="phr"></div>
+   </div>${pvBox("de")}</div>
    <div class="row" style="margin-top:22px"><button class="btn small" type="button" data-act="retrans">EN neu übersetzen</button></div>
-   <label class="f" for="ten">Titel (English)</label><input class="t" id="ten" maxlength="300" value="${esc(cur.title.en)}"><div class="hint sug" id="sug-title" hidden>Vorschlag – bitte kurz prüfen</div>
-   <label class="f">Text (English)</label><div class="rich" id="ren"></div><div class="hint sug" id="sug-body" hidden>Vorschlag – bitte kurz prüfen</div>
+   <div class="pair"><div>
+    <label class="f" for="ten">Titel (English)</label><input class="t" id="ten" maxlength="300" value="${esc(cur.title.en)}"><div class="hint sug" id="sug-title" hidden>Vorschlag – bitte kurz prüfen</div>
+    <label class="f">Text (English)</label><div class="rich" id="ren"></div><div class="hint sug" id="sug-body" hidden>Vorschlag – bitte kurz prüfen</div>
+   </div>${pvBox("en")}</div>
    <div class="sticky"><button class="btn primary" data-act="save" type="button">Speichern</button><button class="btn" data-act="back" type="button">Abbrechen</button></div>`;
-  const E = S.edit;
+  const E = S.edit; const onPh = (n) => openVar(n);
   E.rich = {
-    de: makeRich($("#rde"), cur.body.de, { onInput: () => { E.changed.body = true; }, onBlur: () => autoTrans("body") }),
-    en: makeRich($("#ren"), cur.body.en, { onInput: () => { E.enTouched.body = true; showSug("body", false); } }),
+    de: makeRich($("#rde"), cur.body.de, { onInput: () => { E.changed.body = true; refreshPv(); }, onBlur: () => autoTrans("body"), onPh }),
+    en: makeRich($("#ren"), cur.body.en, { onInput: () => { E.enTouched.body = true; showSug("body", false); refreshPv(); }, onPh }),
   };
-  $("#tde").addEventListener("input", () => (E.changed.title = true));
+  $("#tde").addEventListener("input", () => { E.changed.title = true; refreshPv(); });
   $("#tde").addEventListener("blur", () => autoTrans("title"));
-  $("#ten").addEventListener("input", () => { E.enTouched.title = true; showSug("title", false); });
-  window.scrollTo(0, 0);
+  $("#ten").addEventListener("input", () => { E.enTouched.title = true; showSug("title", false); refreshPv(); });
+  document.body.classList.add("wide"); refreshPv(); window.scrollTo(0, 0);
+}
+
+// ---------- Vorschau ----------
+const pvBox = (l) => `<div class="pv-wrap"><div class="lbl">So sieht es für Gäste aus (${l === "de" ? "Deutsch" : "English"})</div><div class="pv" id="pv-${l}"></div></div>`;
+const cityOf = (u) => ((/\d{4}\s+(.+)$/.exec(u.fixed ? u.fixed.address : "") || [])[1]) || "Wien";
+function valuesFor(lang, over) {               // Werte wie auf der Seite; offene Baustein-Entwürfe zählen schon
+  const u = unitObj(), f = u.fixed || {}; const v = { address: f.address, maps: f.maps, top: f.top, floor: f.floor ? f.floor[lang] : "" };
+  for (const [n, x] of Object.entries(u.vars || {})) { const d = bestDraft("var", n); v[n] = d ? d.body[lang] : x[lang]; }
+  return Object.assign(v, over || {});
+}
+function pvHtml(lang, title, body, welcome, over, mark) {
+  const u = unitObj(), b = rMd(rFill(body, valuesFor(lang, over), mark), u.url, cityOf(u));
+  const inner = b || `<p class="empty">(leer)</p>`;
+  return welcome ? `<div class="hero"><h3>${escA(title)}</h3><div class="rule"></div><div class="body">${inner}</div></div>`
+                 : `${title ? `<div class="sum">${escA(title)}</div>` : ""}<div class="body"${title ? "" : ' style="padding-top:16px"'}>${inner}</div>`;
+}
+function refreshPv() {
+  if (refreshPv._q) return; refreshPv._q = true;
+  requestAnimationFrame(() => {
+    refreshPv._q = false; const E = S.edit; if (!E || !E.rich) return;
+    for (const l of ["de", "en"]) {
+      const box = $("#pv-" + l); if (!box) continue;
+      if (E.mode === "var") {
+        const val = l === "en" && E.v.plain ? E.rich.de.getMd() : (E.rich[l] || E.rich.de).getMd(), c = E.ctx, over = { [E.name]: val };
+        box.innerHTML = c ? pvHtml(l, c.title[l], c.body[l], c.welcome, over, E.name) : pvHtml(l, "", "{" + E.name + "}", false, over, E.name);
+      } else box.innerHTML = pvHtml(l, $(l === "de" ? "#tde" : "#ten").value, E.rich[l].getMd(), E.mode === "welcome");
+    }
+    const r = $("#phr"); if (r && E.mode !== "var") {
+      const u = unitObj(), names = placeholdersOf(E.rich.de.getMd() + " " + E.rich.en.getMd());
+      r.innerHTML = names.length ? "Bausteine in diesem Text: " + names.map((n) => (u.vars || {})[n]
+        ? `<button type="button" data-act="var" data-n="${esc(n)}">{${esc(n)}} ✎</button>` : `<span class="ph fixed" title="Kommt aus den Stammdaten der Wohnung – Lorenz Bescheid sagen">{${esc(n)}}</span>`).join("") : "";
+    }
+  });
+}
+
+// ---------- Baustein bearbeiten ----------
+function unsaved() { const E = S.edit; return !!E && E.mode !== "var" && (E.changed.title || E.changed.body || E.enTouched.title || E.enTouched.body); }
+async function openVar(name, from) {
+  const u = unitObj(), v = (u.vars || {})[name];
+  if (!v) return toast("Dieser Wert kommt aus den Stammdaten der Wohnung – sag Lorenz Bescheid.", 5000);
+  if (unsaved() && !(await ask("Noch nicht gespeichert", "<p>Deine Änderungen an dieser Frage sind noch nicht gespeichert. Speichere sie zuerst, sonst gehen sie verloren.</p>", "Verwerfen und Baustein öffnen", "Zurück"))) return;
+  if (from === undefined && S.edit) from = S.edit.mode === "edit" ? { mode: "edit", id: S.edit.sec.id } : S.edit.mode === "welcome" ? { mode: "welcome" } : null;
+  destroyEditors();
+  const d = bestDraft("var", name), cur = d ? d.body : { de: v.de, en: v.en };
+  // Vorschau im Zusammenhang: Abschnitt, aus dem man kommt, sonst der erste, der den Baustein nutzt
+  const secOf = (s) => { const sd = bestDraft("edit", s.id); return { title: sd ? sd.title : s.title, body: sd ? sd.body : s.body, welcome: false }; };
+  const uses = u.sections.filter((s) => s.placeholders.includes(name));
+  let ctx = null;
+  if (from && from.mode === "edit") { const s = u.sections.find((x) => x.id === from.id); if (s && s.placeholders.includes(name)) ctx = secOf(s); }
+  if (!ctx && uses.length) ctx = secOf(uses[0]);
+  if (!ctx && u.welcome && placeholdersOf(u.welcome.intro.de).includes(name)) { const wd = bestDraft("welcome", null); ctx = { title: wd ? wd.title : u.welcome.greeting, body: wd ? wd.body : u.welcome.intro, welcome: true }; }
+  const n = S.editor.units.filter((x) => x.vars && x.vars[name] && x.vars[name].src === v.src).length, rest = layerN(v.src) - n;
+  const where = `${layerLabel(v.src)} (${n === 1 ? "1 Einheit" : n + " Einheiten"}${rest > 0 ? `; ${rest === 1 ? "1 weitere hat" : rest + " weitere haben"} einen eigenen Wert` : ""})`;
+  S.edit = { mode: "var", name, v, draft: d, from, ctx, n, where, orig: { title: { de: name, en: name }, body: { de: v.de, en: v.en } },
+             changed: { title: false, body: false }, enTouched: { title: false, body: false }, sug: { title: false, body: false } };
+  S.view = "edit";
+  $("#main").innerHTML = `<button class="back" data-act="varback">← Zurück</button>
+   <h2 class="serif" style="font-size:30px;margin:6px 0 0">Baustein bearbeiten</h2>
+   <p class="hint"><span class="ph fixed">{${esc(name)}}</span> · gilt für: ${esc(where)}${uses.length ? " · kommt vor in: " + uses.map((s) => "„" + esc(s.title.de) + "“").join(", ") : ""}</p>
+   <div class="pair"><div><label class="f">${v.plain ? "Wert (gilt für Deutsch und Englisch)" : "Text (Deutsch)"}</label><div class="rich" id="rde"></div></div>${pvBox("de")}</div>
+   ${v.plain ? "" : `<div class="row" style="margin-top:22px"><button class="btn small" type="button" data-act="retrans">EN neu übersetzen</button></div>
+   <div class="pair"><div><label class="f">Text (English)</label><div class="rich" id="ren"></div><div class="hint sug" id="sug-body" hidden>Vorschlag – bitte kurz prüfen</div></div>${pvBox("en")}</div>`}
+   <div class="sticky"><button class="btn primary" data-act="savevar" type="button">Speichern</button><button class="btn" data-act="varback" type="button">Abbrechen</button></div>`;
+  const E = S.edit;
+  E.rich = { de: makeRich($("#rde"), cur.de, { onInput: () => { E.changed.body = true; refreshPv(); }, onBlur: () => { if (!v.plain) autoTrans("body"); } }) };
+  if (!v.plain) E.rich.en = makeRich($("#ren"), cur.en, { onInput: () => { E.enTouched.body = true; showSug("body", false); refreshPv(); } });
+  document.body.classList.add("wide"); refreshPv(); window.scrollTo(0, 0);
+}
+function varBack() {
+  const f = S.edit && S.edit.from; destroyEditors(); S.edit = null;
+  if (f && f.mode === "edit" && unitObj().sections.some((s) => s.id === f.id)) openEdit("edit", { id: f.id });
+  else if (f && f.mode === "welcome") openEdit("welcome"); else back();
+}
+function chooseScope(opts, pre) {
+  return new Promise((res) => {
+    openDlg(`<h3 class="serif">Für wen gilt die Änderung?</h3>${opts.map((o) => `<label class="opt"><input type="radio" name="sc" value="${esc(o.layer)}" ${o.layer === pre ? "checked" : ""}><span>${esc(o.text)}</span></label>`).join("")}<div class="actions"><button class="btn" data-r="0">Abbrechen</button><button class="btn primary" data-r="1">Als Entwurf speichern</button></div>`);
+    dlg.onclick = (e) => { const b = e.target.closest("[data-r]"); if (!b) return; const v = (dlg.querySelector("input:checked") || {}).value; dlg.close(); res(b.dataset.r === "1" ? v : null); };
+    dlg.oncancel = () => res(null);
+  });
+}
+async function saveVar() {
+  const E = S.edit, u = unitObj(), v = E.v;
+  if (!v.plain && E.changed.body && !E.enTouched.body) await translate("body");
+  if (S.edit !== E) return;
+  const de = E.rich.de.getMd().trim(), en = v.plain ? de : E.rich.en.getMd().trim();
+  const same = (x, o) => x === String(o || "").trim() || x === docToMd(mdToDoc(o)).trim();   // Original auch nach Editor-Umwandlung
+  if (!E.draft && same(de, v.de) && same(en, v.en)) return toast("Nichts geändert.");
+  if ([de, en].some((b) => b.length > 20000)) return toast("Der Text ist zu lang.");
+  if (!de && v.de.trim() && !(await ask("Baustein leer?", "<p>Der Baustein ist jetzt leer. Auf der Seite steht dann an dieser Stelle nichts mehr.</p>", "Trotzdem speichern", "Zurück"))) return;
+  if (!v.plain && de && !en) return toast("Text (English) fehlt noch.");
+  if (!NAME) { const n = await askText("Wie heißt du?", "Dein Name"); if (!n) return; NAME = n; lsSet("guide_admin_name", n); updateBar(); }
+  const einheit = "einheit/" + u.slug, opts = [];
+  if (!v.src.startsWith("einheit/")) opts.push({ layer: v.src, text: `Überall, wo der Baustein gilt: ${E.where}` });
+  opts.push({ layer: einheit, text: `Nur ${u.name}` });
+  const layer = await chooseScope(opts, E.draft && opts.some((o) => o.layer === E.draft.layer) ? E.draft.layer : opts[0].layer);
+  if (!layer) return;
+  const draft = { kind: "var", layer, section_id: E.name, unit: u.slug, group_id: null, title: { de: E.name, en: E.name }, body: { de, en }, author: NAME };
+  if (E.draft && E.draft.layer === layer) draft.id = E.draft.id;
+  try {
+    const r = await api("save", { draft });
+    S.drafts = S.drafts.filter((d) => d.id !== r.draft.id && !(d.kind === "var" && d.layer === r.draft.layer && d.section_id === r.draft.section_id));
+    S.drafts.push(r.draft); toast("Als Entwurf gespeichert."); varBack();
+  } catch (e) { toast("Speichern hat nicht geklappt: " + e.message, 6000); }
 }
 function showSug(k, on) { S.edit.sug[k] = on; const n = $("#sug-" + k); if (n) n.hidden = !on; }
 async function translate(k) {
-  const E = S.edit; const src = k === "title" ? $("#tde").value.trim() : E.rich.de.getMd();
+  const E = S.edit; if (k === "title" && !$("#tde")) return; if (k === "body" && !E.rich.en) return;
+  const src = k === "title" ? $("#tde").value.trim() : E.rich.de.getMd();
   if (!src.trim()) return;
   try {
     const r = await api("translate", { text: src, kind: k });
@@ -472,7 +655,7 @@ async function translate(k) {
     if (E.enTouched[k]) return;                       // EN inzwischen selbst bearbeitet → nicht überschreiben
     if (k === "title") $("#ten").value = r.en.trim(); else E.rich.en.setMd(r.en);
     const now = k === "title" ? $("#tde").value.trim() : E.rich.de.getMd();
-    E.changed[k] = now !== src; E.enTouched[k] = false; showSug(k, true);   // DE während der Übersetzung geändert (z. B. Link) → später erneut
+    E.changed[k] = now !== src; E.enTouched[k] = false; showSug(k, true); refreshPv();   // DE während der Übersetzung geändert (z. B. Link) → später erneut
   } catch (e) { toast("Übersetzung nicht möglich: " + e.message, 5000); }
 }
 function autoTrans(k) { const E = S.edit; if (!E || !E.changed[k] || E.enTouched[k]) return; translate(k); }
@@ -516,11 +699,7 @@ async function saveEdit() {
   if (!NAME) { const n = await askText("Wie heißt du?", "Dein Name"); if (!n) return; NAME = n; lsSet("guide_admin_name", n); updateBar(); }
   const opts = scopeOptions();
   const pre = E.draft && opts.some((o) => o.layer === E.draft.layer) ? E.draft.layer : opts[0].layer;
-  const layer = await new Promise((res) => {
-    openDlg(`<h3 class="serif">Für wen gilt die Änderung?</h3>${opts.map((o) => `<label class="opt"><input type="radio" name="sc" value="${esc(o.layer)}" ${o.layer === pre ? "checked" : ""}><span>${esc(o.text)}</span></label>`).join("")}<div class="actions"><button class="btn" data-r="0">Abbrechen</button><button class="btn primary" data-r="1">Als Entwurf speichern</button></div>`);
-    dlg.onclick = (e) => { const b = e.target.closest("[data-r]"); if (!b) return; const v = (dlg.querySelector("input:checked") || {}).value; dlg.close(); res(b.dataset.r === "1" ? v : null); };
-    dlg.oncancel = () => res(null);
-  });
+  const layer = await chooseScope(opts, pre);
   if (!layer) return;
   const draft = { kind: E.mode, layer, section_id: E.mode === "edit" ? E.sec.id : null, unit: u.slug, group_id: E.mode === "new" ? E.group : null, title, body, author: NAME };
   if (E.draft && E.draft.layer === layer) draft.id = E.draft.id;
@@ -530,17 +709,18 @@ async function saveEdit() {
     S.drafts.push(r.draft); toast("Als Entwurf gespeichert."); back();
   } catch (e) { toast("Speichern hat nicht geklappt: " + e.message, 6000); }
 }
-function back() { destroyEditors(); S.edit = null; renderList(); }
+function back() { destroyEditors(); S.edit = null; document.body.classList.remove("wide"); renderList(); }
 
 // ---------- Entwürfe / Veröffentlichen ----------
 function draftsDialog() {
   if (!S.drafts.length) return openDlg(`<h3 class="serif">Entwürfe</h3><p>Keine Entwürfe.</p><div class="actions"><button class="btn" data-x="1">Schließen</button></div>`), (dlg.onclick = (e) => { if (e.target.closest("[data-x]")) dlg.close(); });
-  openDlg(`<h3 class="serif">Entwürfe (${S.drafts.length})</h3><ul class="list">${S.drafts.map((d) => `<li><div class="m"><b>${esc(d.title.de)}</b><small>${kindTxt[d.kind] || d.kind} · ${esc(layerLabel(d.layer))} · ${esc(d.author || "")}${d.status === "failed" ? " · fehlgeschlagen" : ""}</small></div><button class="btn small" data-o="${esc(d.id)}">Öffnen</button><button class="btn small danger" data-d="${esc(d.id)}">Löschen</button></li>`).join("")}</ul><div class="actions"><button class="btn" data-x="1">Schließen</button></div>`);
+  openDlg(`<h3 class="serif">Entwürfe (${S.drafts.length})</h3><ul class="list">${S.drafts.map((d) => `<li><div class="m"><b>${d.kind === "var" ? "Baustein {" + esc(d.section_id) + "}" : esc(d.title.de)}</b><small>${kindTxt[d.kind] || d.kind} · ${esc(layerLabel(d.layer))} · ${esc(d.author || "")}${d.status === "failed" ? " · fehlgeschlagen" : ""}</small></div><button class="btn small" data-o="${esc(d.id)}">Öffnen</button><button class="btn small danger" data-d="${esc(d.id)}">Löschen</button></li>`).join("")}</ul><div class="actions"><button class="btn" data-x="1">Schließen</button></div>`);
   dlg.onclick = async (e) => {
     if (e.target.closest("[data-x]")) return dlg.close();
     const o = e.target.closest("[data-o]"), d = e.target.closest("[data-d]");
     if (o) { const dr = S.drafts.find((x) => x.id === o.dataset.o); dlg.close(); if (dr.unit && S.editor.units.some((u) => u.slug === dr.unit)) { S.unit = dr.unit; $("#unit").value = dr.unit; } destroyEditors(); S.edit = null;
-      if (dr.kind === "new") openEdit("editnew", { id: dr.id }); else if (dr.kind === "welcome") openEdit("welcome"); else if (unitObj().sections.some((s) => s.id === dr.section_id)) openEdit("edit", { id: dr.section_id }); else { renderList(); toast("Dieser Abschnitt gehört zu einer anderen Einheit."); } }
+      if (dr.kind === "var") { if ((unitObj().vars || {})[dr.section_id]) openVar(dr.section_id, null); else { renderList(); toast("Diesen Baustein gibt es hier nicht."); } }
+      else if (dr.kind === "new") openEdit("editnew", { id: dr.id }); else if (dr.kind === "welcome") openEdit("welcome"); else if (unitObj().sections.some((s) => s.id === dr.section_id)) openEdit("edit", { id: dr.section_id }); else { renderList(); toast("Dieser Abschnitt gehört zu einer anderen Einheit."); } }
     if (d) { try { await api("delete", { id: d.dataset.d }); S.drafts = S.drafts.filter((x) => x.id !== d.dataset.d); updateBar(); if (S.view === "list") renderList(); draftsDialog(); } catch (er) { toast("Löschen hat nicht geklappt: " + er.message, 5000); } }
   };
 }
@@ -576,9 +756,12 @@ $("#main").addEventListener("click", (e) => {
   else if (a === "back") back();
   else if (a === "save") saveEdit();
   else if (a === "retrans") { translate("title"); translate("body"); }
+  else if (a === "var") openVar(b.dataset.n);
+  else if (a === "varback") varBack();
+  else if (a === "savevar") saveVar();
   else if (a === "undo") undo(b.dataset.id);
 });
-$("#unit").addEventListener("change", (e) => { S.unit = e.target.value; lsSet("guide_admin_unit", S.unit); destroyEditors(); S.edit = null; renderList(); renderBanners(); });
+$("#unit").addEventListener("change", (e) => { S.unit = e.target.value; lsSet("guide_admin_unit", S.unit); destroyEditors(); S.edit = null; document.body.classList.remove("wide"); renderList(); renderBanners(); });
 $("#btnDrafts").addEventListener("click", draftsDialog);
 $("#btnPublish").addEventListener("click", publish);
 
@@ -600,7 +783,7 @@ $("#btnPublish").addEventListener("click", publish);
     if (!NAME) { const n = await askText("Wie heißt du?", "Dein Name"); if (n) { NAME = n; lsSet("guide_admin_name", n); updateBar(); } }
   } catch (e) { $("#main").innerHTML = `<div class="banner err" style="margin:0">${esc(e.message)}</div>`; }
 })();
-window.__codec = { mdToDoc, docToMd };
+window.__codec = { mdToDoc, docToMd, rMd, rFill, rInline };
 </script>
 </body>
 </html>
