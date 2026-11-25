@@ -80,6 +80,7 @@ body.wide main,body.wide .bar{max-width:1240px}
 .pv .imgs img{width:100%;height:auto;display:block;border-radius:8px;border:1px solid var(--gold2);background:#fff}
 .pv mark{background:#fff1c7;color:inherit;border-radius:3px;padding:0 1px}
 .pv .empty{color:var(--muted);font-style:italic}
+.pv .fold{margin:4px 0 10px;border:1px solid var(--gold2);border-radius:10px;background:#fff}.pv .fold summary{cursor:pointer;font:600 15px/1.35 Inter,sans-serif;padding:10px 12px;color:var(--gold-dark)}.pv .fold-body{padding:0 12px 12px}
 .imgrow{display:flex;gap:8px;margin:0 0 10px;padding:6px;border:1px dashed var(--gold2);border-radius:8px;background:#fcfaf4;align-items:center;flex-wrap:wrap}
 .imgrow img{height:70px;max-width:45%;width:auto;border-radius:6px;border:1px solid var(--gold2);object-fit:cover;background:#eee}
 .imgrow .cap{font-size:12px;color:var(--muted);flex:1 1 100%}
@@ -293,6 +294,8 @@ function rInline(t, city) {
   return autolinkAddresses(t, city).replace(/\u0001/g, "<mark>").replace(/\u0002/g, "</mark>");
 }
 function rMd(text, imgBase, city) {
+  const fm = /^[ \t]*>> (.+)$/m.exec(String(text || ""));   // Aufklapp-Block wie build_guide.md
+  if (fm) { const s = String(text); return rMd(s.slice(0, fm.index), imgBase, city) + `\n<details class="fold"><summary>${rInline(fm[1].trim(), city)}</summary><div class="fold-body">${rMd(s.slice(fm.index + fm[0].length), imgBase, city)}</div></details>`; }
   const out = []; let buf = [], kind = null;
   const flush = () => {
     if (!buf.length) return;
